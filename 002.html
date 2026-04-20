@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>BetChat</title>
+ 
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@500;700&display=swap" rel="stylesheet">
+ 
+  <style>
+    :root {
+      --bg:       #0c1118;
+      --surf:     #161d27;
+      --surf2:    #1e2736;
+      --border:   #2a3547;
+      --neon:     #00d4ff;
+      --neon-dim: rgba(0,212,255,.12);
+      --gold:     #f5c518;
+      --green:    #00e676;
+      --red:      #ff3d57;
+      --txt:      #e8edf2;
+      --txt2:     #7a8fa6;
+    }
+ 
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+    html, body {
+      height: 100%; overflow: hidden;
+      background: var(--bg); color: var(--txt);
+      font-family: 'Barlow', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+ 
+    /* ── SHELL ────────────────────── */
+    #app {
+      display: flex; flex-direction: column;
+      height: 100dvh; height: 100vh;
+    }
+ 
+    /* ── TOPBAR ───────────────────── */
+    #topbar {
+      height: 56px;
+      background: var(--surf);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 10px; gap: 8px;
+      flex-shrink: 0; z-index: 10;
+    }
+    .tb-logo {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg,var(--neon),var(--gold));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-family:'Barlow Condensed',sans-serif;
+      font-weight:700; font-size:15px; color:#0c1118; flex-shrink:0;
+    }
+    .tb-name {
+      font-family:'Barlow Condensed',sans-serif;
+      font-weight:700; font-size:19px; color:var(--txt); flex-shrink:0;
+    }
+    #betIndicator {
+      flex:1; text-align:center; font-size:11px; font-weight:700;
+      color:var(--neon); background:var(--neon-dim);
+      border:1px solid rgba(0,212,255,.2); border-radius:20px;
+      padding:4px 8px; white-space:nowrap;
+      overflow:hidden; text-overflow:ellipsis;
+    }
+    .tb-btn {
+      background:none; border:none; color:var(--txt2);
+      cursor:pointer; width:34px; height:34px;
+      display:flex; align-items:center; justify-content:center;
+      border-radius:8px; transition:background .2s,color .2s; flex-shrink:0;
+    }
+    .tb-btn:hover,
+    .tb-btn:active { background:var(--surf2); color:var(--neon); }
+    .tb-btn .material-icons { font-size:21px; }
+ 
+    /* ── STATS BAR (mobile) ───────── */
+    #statsbar {
+      background:var(--surf2);
+      border-bottom:1px solid var(--border);
+      display:flex; flex-shrink:0;
+    }
+    .sbar-chip {
+      flex:1; padding:7px 4px; text-align:center;
+      border-right:1px solid var(--border);
+    }
+    .sbar-chip:last-child { border-right:none; }
+    .sbar-lbl { font-size:9px; font-weight:600; color:var(--txt2); text-transform:uppercase; letter-spacing:.8px; }
+    .sbar-val {
+      font-family:'Barlow Condensed',sans-serif;
+      font-size:15px; font-weight:700; color:var(--neon); line-height:1.1;
+    }
+ 
+    /* ── PAGES ───────────────────── */
+    #pages { flex:1; overflow:hidden; position:relative; }
+    .page {
+      position:absolute; inset:0;
+      display:none; flex-direction:column; overflow:hidden;
+    }
+    .page.active { display:flex; }
+ 
+    /* ── CHAT ─────────────────────── */
+    #chatMessages {
+      flex:1; overflow-y:auto; padding:12px 12px 8px;
+      display:flex; flex-direction:column; gap:10px;
+      -webkit-overflow-scrolling:touch;
+    }
+    #chatMessages::-webkit-scrollbar { width:4px; }
+    #chatMessages::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+ 
+    .msg { display:flex; gap:8px; animation:msgIn .3s ease-out both; }
+    .msg.user { flex-direction:row-reverse; }
+    @keyframes msgIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+ 
+    .msg-av {
+      width:30px; height:30px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:11px; font-weight:700; flex-shrink:0; align-self:flex-end;
+    }
+    .msg.bot  .msg-av { background:linear-gradient(135deg,var(--neon),var(--gold)); color:#0c1118; }
+    .msg.user .msg-av { background:var(--surf2); color:var(--neon); border:1px solid var(--border); }
+ 
+    .msg-body { max-width:78%; display:flex; flex-direction:column; gap:6px; }
+ 
+    .msg-txt {
+      padding:10px 13px; border-radius:16px;
+      font-size:13.5px; line-height:1.5;
+      word-break:break-word; white-space:pre-wrap;
+    }
+    .msg.bot  .msg-txt { background:var(--surf2); border:1px solid var(--border); border-bottom-left-radius:4px; color:var(--txt); }
+    .msg.user .msg-txt { background:linear-gradient(135deg,rgba(0,212,255,.18),rgba(245,197,24,.1)); border:1px solid rgba(0,212,255,.35); border-bottom-right-radius:4px; color:var(--txt); }
+ 
+    .typing-dots { display:flex; gap:4px; padding:12px 14px; }
+    .typing-dots span {
+      width:7px; height:7px; border-radius:50%;
+      background:var(--neon); opacity:.4;
+      animation:blink 1.4s infinite;
+    }
+    .typing-dots span:nth-child(2){animation-delay:.2s}
+    .typing-dots span:nth-child(3){animation-delay:.4s}
+    @keyframes blink{0%,60%,100%{opacity:.3}30%{opacity:1}}
+ 
+    /* suggestions */
+    .sugg-lbl { font-size:11px; font-weight:700; color:var(--neon); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px; }
+    .sugg-opt {
+      padding:8px 10px; background:var(--surf);
+      border:1px solid var(--border); border-radius:10px;
+      margin-bottom:5px; cursor:pointer; transition:border-color .2s;
+    }
+    .sugg-opt:hover { border-color:var(--neon); }
+    .sugg-opt-name { font-size:12px; font-weight:600; color:var(--txt); }
+    .sugg-opt-odds { font-size:11px; color:var(--gold); margin-top:2px; }
+ 
+    /* confirm panel */
+    .confirm-panel {
+      background:var(--surf2); border:1px solid var(--border);
+      border-radius:14px; padding:12px; font-size:13px;
+    }
+    .confirm-hdr { font-weight:700; color:var(--neon); margin-bottom:8px; font-size:13px; }
+    .confirm-sel {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:7px 9px; background:var(--surf);
+      border:1px solid var(--border); border-radius:8px; margin-bottom:5px;
+    }
+    .confirm-name  { font-weight:600; font-size:13px; color:var(--txt); }
+    .confirm-sport { font-size:11px; color:var(--gold); }
+    .confirm-rmv {
+      background:none; border:none; color:var(--red);
+      cursor:pointer; display:flex; align-items:center; padding:0 2px;
+    }
+    .confirm-rmv .material-icons { font-size:18px; }
+    .confirm-sum {
+      padding:8px 10px; background:var(--surf);
+      border:1px solid rgba(0,212,255,.3); border-radius:8px;
+      color:var(--neon); font-weight:700; font-size:12px;
+      margin:8px 0; line-height:1.6;
+    }
+    .confirm-sum strong { color:#fff; }
+    .confirm-actions { display:flex; gap:8px; }
+    .btn-place {
+      flex:1; padding:11px; background:var(--green);
+      color:#0c1118; border:none; border-radius:9px;
+      font-family:'Barlow',sans-serif; font-weight:800; font-size:14px;
+      cursor:pointer; transition:filter .2s;
+    }
+    .btn-place:hover { filter:brightness(1.1); }
+    .btn-cancel-sm {
+      padding:11px 14px; background:rgba(255,61,87,.1);
+      color:var(--red); border:1px solid rgba(255,61,87,.3);
+      border-radius:9px; font-family:'Barlow',sans-serif;
+      font-weight:700; font-size:14px; cursor:pointer;
+    }
+ 
+    /* ── CHAT INPUT ───────────────── */
+    #chatInput {
+      padding:10px 10px 14px; background:var(--surf);
+      border-top:1px solid var(--border); flex-shrink:0;
+    }
+    .input-row { display:flex; gap:8px; align-items:flex-end; }
+    #msgInput {
+      flex:1; background:var(--surf2);
+      border:1px solid var(--border); border-radius:22px;
+      padding:10px 16px; color:var(--txt);
+      font-family:'Barlow',sans-serif; font-size:14px;
+      resize:none; max-height:88px; line-height:1.4;
+      -webkit-appearance:none;
+    }
+    #msgInput:focus { outline:none; border-color:var(--neon); }
+    #msgInput::placeholder { color:var(--txt2); }
+    #stakeWrap {
+      background:var(--surf2); border:1px solid var(--border);
+      border-radius:10px; padding:5px 9px;
+      display:flex; flex-direction:column; align-items:center; min-width:56px;
+    }
+    #stakeWrap label { font-size:9px; color:var(--txt2); font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+    #stakeInput {
+      background:none; border:none; color:var(--neon);
+      font-family:'Barlow Condensed',sans-serif;
+      font-size:17px; font-weight:700; width:50px; text-align:center;
+      -webkit-appearance:none;
+    }
+    #stakeInput:focus { outline:none; }
+    #sendBtn {
+      width:42px; height:42px;
+      background:linear-gradient(135deg,var(--neon),var(--gold));
+      border:none; border-radius:50%; color:#0c1118;
+      cursor:pointer; display:flex; align-items:center; justify-content:center;
+      font-size:18px; flex-shrink:0; transition:transform .15s,box-shadow .15s;
+    }
+    #sendBtn:active { transform:scale(.9); }
+    #sendBtn:hover  { box-shadow:0 0 16px rgba(0,212,255,.45); }
+    #sendBtn .material-icons { font-size:20px; }
+ 
+    /* ── BETS PAGE ────────────────── */
+    .page-tabs {
+      display:flex; background:var(--surf);
+      border-bottom:1px solid var(--border); flex-shrink:0;
+    }
+    .page-tab {
+      flex:1; padding:13px; border:none; background:none;
+      color:var(--txt2); font-family:'Barlow',sans-serif;
+      font-weight:600; font-size:13px;
+      border-bottom:2px solid transparent;
+      cursor:pointer; transition:color .2s,border-color .2s;
+    }
+    .page-tab.active { color:var(--neon); border-bottom-color:var(--neon); }
+ 
+    .bets-list {
+      flex:1; overflow-y:auto; padding:12px;
+      display:flex; flex-direction:column; gap:10px;
+      -webkit-overflow-scrolling:touch;
+    }
+    .bets-list.hidden { display:none !important; }
+ 
+    .bet-card {
+      background:var(--surf2); border:1px solid var(--border);
+      border-radius:12px; padding:12px;
+      position:relative; overflow:hidden;
+    }
+    .bet-card::before {
+      content:''; position:absolute; left:0; top:0; bottom:0; width:3px;
+      background:linear-gradient(to bottom,var(--neon),var(--gold));
+      border-radius:3px 0 0 3px;
+    }
+    .bet-card.result-won::before  { background:var(--green); }
+    .bet-card.result-lost::before { background:var(--red); }
+ 
+    .bc-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px; }
+    .bc-sport { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:15px; color:var(--txt); }
+    .bc-badge {
+      font-size:10px; font-weight:700; padding:2px 7px;
+      border-radius:20px; text-transform:uppercase; letter-spacing:.5px;
+    }
+    .bc-badge.pending { background:rgba(245,197,24,.15); color:var(--gold); }
+    .bc-badge.won     { background:rgba(0,230,118,.15);  color:var(--green); }
+    .bc-badge.lost    { background:rgba(255,61,87,.15);   color:var(--red); }
+    .bc-pred { font-size:12px; color:var(--txt2); margin-bottom:8px; line-height:1.4; }
+    .bc-foot { display:flex; gap:12px; font-size:12px; }
+    .bc-foot span { color:var(--txt2); }
+    .bc-foot strong { color:var(--neon); }
+    .bc-foot .win   { color:var(--green); }
+ 
+    .empty-msg {
+      text-align:center; color:var(--txt2); padding:40px 20px; font-size:14px;
+    }
+    .empty-msg .material-icons { font-size:48px; color:var(--border); display:block; margin-bottom:10px; }
+ 
+    /* ── SPORTS SHEET ─────────────── */
+    #sportsOverlay {
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.65);
+      z-index:200; display:none;
+      align-items:flex-end;
+      backdrop-filter:blur(2px);
+    }
+    #sportsOverlay.open { display:flex; }
+ 
+    #sportsSheet {
+      width:100%; max-height:92dvh; max-height:92vh;
+      background:var(--surf); border-radius:20px 20px 0 0;
+      display:flex; flex-direction:column;
+      animation:sheetUp .32s cubic-bezier(.22,.68,0,1.2) both;
+      overflow:hidden;
+    }
+    @keyframes sheetUp { from{transform:translateY(100%)} to{transform:none} }
+ 
+    .sheet-handle {
+      width:36px; height:4px; background:var(--border);
+      border-radius:4px; margin:10px auto 0; flex-shrink:0;
+    }
+    .sheet-hdr {
+      padding:12px 16px 10px;
+      display:flex; align-items:center; justify-content:space-between;
+      border-bottom:1px solid var(--border); flex-shrink:0;
+    }
+    .sheet-hdr-title { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:19px; color:var(--txt); }
+    .sheet-close {
+      background:var(--surf2); border:none; color:var(--txt2);
+      cursor:pointer; width:32px; height:32px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      transition:background .2s,color .2s;
+    }
+    .sheet-close:hover { background:var(--border); color:var(--txt); }
+    .sheet-close .material-icons { font-size:18px; }
+ 
+    .sheet-search {
+      padding:10px 14px; border-bottom:1px solid var(--border);
+      flex-shrink:0; position:relative;
+    }
+    #teamSearch {
+      width:100%; background:var(--surf2);
+      border:1px solid var(--border); border-radius:22px;
+      padding:9px 14px 9px 38px; color:var(--txt);
+      font-family:'Barlow',sans-serif; font-size:13px; -webkit-appearance:none;
+    }
+    #teamSearch:focus { outline:none; border-color:var(--neon); }
+    #teamSearch::placeholder { color:var(--txt2); }
+    .search-ico {
+      position:absolute; left:26px; top:50%;
+      transform:translateY(-50%); color:var(--txt2); pointer-events:none;
+    }
+    .search-ico.material-icons { font-size:18px; }
+ 
+    .sheet-body {
+      flex:1; overflow-y:auto; padding:10px 12px 4px;
+      -webkit-overflow-scrolling:touch;
+    }
+    .sheet-body::-webkit-scrollbar { width:4px; }
+    .sheet-body::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+ 
+    /* accordion */
+    .sport-cat { margin-bottom:8px; border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+    .sport-cat-hdr {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:11px 14px; background:var(--surf2);
+      cursor:pointer; user-select:none; transition:background .15s;
+    }
+    .sport-cat-hdr:hover { background:var(--border); }
+    .sport-cat-name {
+      font-family:'Barlow Condensed',sans-serif;
+      font-weight:700; font-size:16px; color:var(--neon);
+    }
+    .sport-chevron { color:var(--txt2); transition:transform .25s; font-size:20px; }
+    .sport-cat.open .sport-chevron { transform:rotate(180deg); }
+    .sport-cat.open .sport-cat-hdr { border-bottom:1px solid var(--border); }
+ 
+    .sport-games {
+      display:none; flex-direction:column; gap:6px;
+      padding:10px; background:var(--surf);
+    }
+    .sport-cat.open .sport-games { display:flex; }
+ 
+    /* game row */
+    .game-row {
+      display:flex; align-items:stretch; gap:4px;
+      background:var(--surf2); border:1px solid var(--border);
+      border-radius:9px; overflow:hidden; min-height:52px;
+    }
+    .game-time-col {
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      padding:6px 8px; min-width:56px; flex-shrink:0;
+      border-right:1px solid var(--border);
+      background:rgba(0,0,0,.15);
+    }
+    .game-time-txt {
+      font-size:9px; font-weight:700; color:var(--txt2);
+      text-transform:uppercase; text-align:center; line-height:1.3;
+    }
+    .game-teams { display:flex; flex:1; gap:3px; padding:4px; align-items:stretch; }
+ 
+    .team-btn {
+      flex:1; border:2px solid var(--border);
+      background:var(--surf); border-radius:7px;
+      cursor:pointer; display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      padding:5px 4px; gap:2px;
+      transition:border-color .15s,background .15s; min-width:0;
+    }
+    .team-btn:active { transform:scale(.97); }
+    .team-btn:hover  { border-color:rgba(0,212,255,.5); background:rgba(0,212,255,.05); }
+    .team-btn.selected { border-color:var(--green); background:rgba(0,230,118,.12); }
+ 
+    .tbtn-name {
+      font-family:'Barlow',sans-serif; font-size:11px; font-weight:700;
+      color:var(--txt); text-align:center; line-height:1.2;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%;
+    }
+    .team-btn.selected .tbtn-name { color:var(--green); }
+    .tbtn-odds {
+      font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:700; color:var(--gold);
+    }
+    .team-btn.selected .tbtn-odds { color:var(--green); }
+ 
+    .draw-btn {
+      flex:0 0 50px; background:rgba(245,197,24,.07);
+      border-color:rgba(245,197,24,.3);
+    }
+    .draw-btn .tbtn-name  { font-size:9px; color:var(--gold); }
+    .draw-btn .tbtn-odds  { color:var(--gold); }
+    .draw-btn:hover { background:rgba(245,197,24,.15); border-color:var(--gold); }
+    .draw-btn.selected { border-color:var(--gold); background:rgba(245,197,24,.2); }
+    .draw-btn.selected .tbtn-name { color:var(--gold); }
+ 
+    /* sheet footer */
+    .sheet-footer {
+      padding:10px 14px; border-top:1px solid var(--border);
+      display:flex; gap:8px; flex-shrink:0; background:var(--surf);
+    }
+    #sheetOkBtn {
+      flex:1; padding:13px;
+      background:linear-gradient(135deg,var(--neon),var(--gold));
+      color:#0c1118; border:none; border-radius:10px;
+      font-family:'Barlow',sans-serif; font-weight:800; font-size:15px;
+      cursor:pointer; transition:filter .2s;
+    }
+    #sheetOkBtn:hover { filter:brightness(1.08); }
+    #sheetCancelBtn {
+      padding:13px 18px; background:rgba(255,61,87,.1);
+      color:var(--red); border:1px solid rgba(255,61,87,.3);
+      border-radius:10px; font-family:'Barlow',sans-serif;
+      font-weight:700; font-size:15px; cursor:pointer;
+    }
+ 
+    /* ── BOTTOM NAV ───────────────── */
+    #bottomNav {
+      height:60px; background:var(--surf);
+      border-top:1px solid var(--border);
+      display:flex; flex-shrink:0; z-index:10;
+    }
+    .nav-item {
+      flex:1; background:none; border:none;
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      gap:2px; cursor:pointer; color:var(--txt2);
+      transition:color .2s;
+    }
+    .nav-item.active { color:var(--neon); }
+    .nav-item .material-icons { font-size:22px; }
+    .nav-item .nav-lbl { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+ 
+    .nav-center {
+      flex:0 0 72px; background:none; border:none;
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      gap:2px; cursor:pointer; padding-top:4px;
+    }
+    .nav-center-ring {
+      width:48px; height:48px;
+      background:linear-gradient(135deg,var(--neon),var(--gold));
+      border-radius:50%; display:flex; align-items:center; justify-content:center;
+      margin-top:-18px; box-shadow:0 4px 20px rgba(0,212,255,.4);
+      transition:transform .15s;
+    }
+    .nav-center:active .nav-center-ring { transform:scale(.88); }
+    .nav-center-ring .material-icons { font-size:22px; color:#0c1118; }
+    .nav-center-lbl { font-size:10px; font-weight:600; color:var(--neon); text-transform:uppercase; letter-spacing:.5px; }
+ 
+    /* ── DESKTOP (≥ 768px) ────────── */
+    @media (min-width:768px) {
+      #app { flex-direction:row; }
+ 
+      #sidebar {
+        width:288px; flex-shrink:0;
+        background:var(--surf); border-right:1px solid var(--border);
+        display:flex; flex-direction:column; order:-1;
+      }
+      .sdbar-hdr {
+        padding:16px; border-bottom:1px solid var(--border);
+        display:flex; align-items:center; gap:10px;
+      }
+      .sdbar-logo {
+        width:34px; height:34px;
+        background:linear-gradient(135deg,var(--neon),var(--gold));
+        border-radius:8px; display:flex; align-items:center; justify-content:center;
+        font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:17px; color:#0c1118;
+      }
+      .sdbar-hdr h2 {
+        font-family:'Barlow Condensed',sans-serif;
+        font-weight:700; font-size:20px; color:var(--txt);
+      }
+      .sdbar-tabs { display:flex; border-bottom:1px solid var(--border); }
+      .sdbar-tab {
+        flex:1; padding:11px; background:none; border:none;
+        border-bottom:2px solid transparent; color:var(--txt2);
+        font-family:'Barlow',sans-serif; font-weight:600; font-size:13px;
+        cursor:pointer; transition:color .2s,border-color .2s;
+      }
+      .sdbar-tab.active { color:var(--neon); border-bottom-color:var(--neon); }
+      .sdbar-list {
+        flex:1; overflow-y:auto; padding:12px;
+        display:flex; flex-direction:column; gap:9px;
+      }
+      .sdbar-list.hidden { display:none !important; }
+      .sdbar-list::-webkit-scrollbar { width:4px; }
+      .sdbar-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+ 
+      #mainArea { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+ 
+      /* hide mobile-only elements */
+      #statsbar    { display:none; }
+      #bottomNav   { display:none; }
+      #betsPage    { display:none !important; }
+ 
+      /* show desktop stats in topbar */
+      #desktopStats { display:flex; gap:16px; margin-left:auto; }
+      .ds-s { text-align:right; }
+      .ds-lbl { font-size:10px; color:var(--txt2); font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+      .ds-val { font-family:'Barlow Condensed',sans-serif; font-size:17px; font-weight:700; color:var(--neon); line-height:1.1; }
+ 
+      #topBrowseBtn { display:flex; }
+ 
+      /* sheet centered on desktop */
+      #sportsOverlay { align-items:center; }
+      #sportsSheet {
+        max-height:82vh; width:500px; max-width:94vw;
+        border-radius:16px;
+        animation:sheetFade .25s ease both;
+      }
+      @keyframes sheetFade{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+      .sheet-handle { display:none; }
+ 
+      #chatPage { display:flex !important; }
+    }
+ 
+    @media (max-width:767px) {
+      #sidebar       { display:none; }
+      #mainArea      { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+      #desktopStats  { display:none; }
+      #topBrowseBtn  { display:none; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+ 
+  <!-- DESKTOP SIDEBAR -->
+  <div id="sidebar">
+    <div class="sdbar-hdr">
+      <div class="sdbar-logo">BC</div>
+      <h2>BetChat</h2>
+    </div>
+    <div class="sdbar-tabs">
+      <button class="sdbar-tab active" onclick="deskTab('active',this)">Active</button>
+      <button class="sdbar-tab"        onclick="deskTab('history',this)">History</button>
+    </div>
+    <div class="sdbar-list" id="deskActive">
+      <div class="empty-msg"><span class="material-icons">receipt_long</span>No active bets yet</div>
+    </div>
+    <div class="sdbar-list hidden" id="deskHistory">
+      <div class="empty-msg"><span class="material-icons">history</span>No history yet</div>
+    </div>
+  </div>
+ 
+  <!-- MAIN -->
+  <div id="mainArea">
+ 
+    <!-- Topbar -->
+    <div id="topbar">
+      <div class="tb-logo">BC</div>
+      <div class="tb-name">BetChat</div>
+      <div id="betIndicator">Pick your selections</div>
+      <button class="tb-btn" id="topBrowseBtn" title="Browse Sports" onclick="openSheet()">
+        <span class="material-icons">sports_soccer</span>
+      </button>
+      <button class="tb-btn" onclick="showProfile()">
+        <span class="material-icons">account_circle</span>
+      </button>
+      <div id="desktopStats">
+        <div class="ds-s"><div class="ds-lbl">Balance</div><div class="ds-val" id="dsBalance">$1,000</div></div>
+        <div class="ds-s"><div class="ds-lbl">Bets</div><div class="ds-val" id="dsBets">0</div></div>
+        <div class="ds-s"><div class="ds-lbl">Winnings</div><div class="ds-val" id="dsWin">$0</div></div>
+      </div>
+    </div>
+ 
+    <!-- Stats Bar (mobile) -->
+    <div id="statsbar">
+      <div class="sbar-chip"><div class="sbar-lbl">Balance</div><div class="sbar-val" id="mbBal">$1,000</div></div>
+      <div class="sbar-chip"><div class="sbar-lbl">Bets</div><div class="sbar-val" id="mbBets">0</div></div>
+      <div class="sbar-chip"><div class="sbar-lbl">Winnings</div><div class="sbar-val" id="mbWin">$0</div></div>
+    </div>
+ 
+    <!-- Pages -->
+    <div id="pages">
+ 
+      <!-- Chat -->
+      <div class="page active" id="chatPage">
+        <div id="chatMessages"></div>
+        <div id="chatInput">
+          <div class="input-row">
+            <textarea id="msgInput" rows="1" placeholder="Chat or ask for tips…"></textarea>
+            <div id="stakeWrap">
+              <label for="stakeInput">Stake $</label>
+              <input type="number" id="stakeInput" value="50" min="1">
+            </div>
+            <button id="sendBtn"><span class="material-icons">send</span></button>
+          </div>
+        </div>
+      </div>
+ 
+      <!-- Bets (mobile tab) -->
+      <div class="page" id="betsPage">
+        <div class="page-tabs">
+          <button class="page-tab active" onclick="mobBetsTab('active',this)">Active Bets</button>
+          <button class="page-tab"        onclick="mobBetsTab('history',this)">History</button>
+        </div>
+        <div class="bets-list" id="mobActive">
+          <div class="empty-msg"><span class="material-icons">receipt_long</span>No active bets yet</div>
+        </div>
+        <div class="bets-list hidden" id="mobHistory">
+          <div class="empty-msg"><span class="material-icons">history</span>No history yet</div>
+        </div>
+      </div>
+ 
+    </div>
+  </div>
+</div>
+ 
+<!-- SPORTS SHEET -->
+<div id="sportsOverlay" onclick="overlayTap(event)">
+  <div id="sportsSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-hdr">
+      <div class="sheet-hdr-title">🏆 Browse Sports</div>
+      <button class="sheet-close" onclick="closeSheet()"><span class="material-icons">close</span></button>
+    </div>
+    <div class="sheet-search">
+      <span class="search-ico material-icons">search</span>
+      <input type="text" id="teamSearch" placeholder="Search team or league…" oninput="filterGames()">
+    </div>
+    <div class="sheet-body" id="sportsList"></div>
+    <div class="sheet-footer">
+      <button id="sheetCancelBtn" onclick="closeSheet()">Cancel</button>
+      <button id="sheetOkBtn" onclick="confirmSel()">Confirm</button>
+    </div>
+  </div>
+</div>
+ 
+<!-- BOTTOM NAV (mobile) -->
+<div id="bottomNav">
+  <button class="nav-item active" id="navChat" onclick="showPage('chatPage',this)">
+    <span class="material-icons">chat_bubble_outline</span>
+    <span class="nav-lbl">Chat</span>
+  </button>
+  <button class="nav-center" onclick="openSheet()">
+    <div class="nav-center-ring"><span class="material-icons">sports_soccer</span></div>
+    <span class="nav-center-lbl">Browse</span>
+  </button>
+  <button class="nav-item" id="navBets" onclick="showPage('betsPage',this)">
+    <span class="material-icons">receipt_long</span>
+    <span class="nav-lbl">My Bets</span>
+  </button>
+</div>
+ 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+<script>
+// ─── STATE ───────────────────────────────────────
+const S = {
+  balance:1000, totalBets:0, totalWinnings:0,
+  activeBets:[], betHistory:[],
+  selections:[],
+  stake:50, typing:false
+};
+ 
+// ─── DATA ────────────────────────────────────────
+const SPORTS = {
+  'NBA 🏀':{games:[
+    {id:'nba1',time:'Today\n19:30',home:{name:'Lakers',  odds:1.95},away:{name:'Celtics',    odds:1.85}},
+    {id:'nba2',time:'Today\n21:00',home:{name:'G.State', odds:1.90},away:{name:'Denver',     odds:1.95}},
+    {id:'nba3',time:'Tom.\n20:00', home:{name:'Miami',   odds:2.10},away:{name:'Chicago',    odds:1.80}}
+  ]},
+  'Premier League ⚽':{games:[
+    {id:'epl1',time:'Sat\n12:30',home:{name:'Man Utd', odds:2.10},draw:3.20,away:{name:'Liverpool',odds:1.75}},
+    {id:'epl2',time:'Sat\n15:00',home:{name:'Arsenal', odds:1.90},draw:3.40,away:{name:'Chelsea',  odds:2.15}},
+    {id:'epl3',time:'Sun\n16:30',home:{name:'Man City',odds:1.65},draw:3.80,away:{name:'Spurs',    odds:2.30}}
+  ]},
+  'La Liga ⚽':{games:[
+    {id:'lla1',time:'Sat\n20:00',home:{name:'R.Madrid', odds:1.85},draw:3.50,away:{name:'Barcelona', odds:2.10}},
+    {id:'lla2',time:'Sun\n18:00',home:{name:'Atletico', odds:2.45},draw:3.10,away:{name:'Valencia',  odds:3.50}},
+    {id:'lla3',time:'Sun\n20:00',home:{name:'Sevilla',  odds:3.00},draw:3.20,away:{name:'Villarreal',odds:2.60}}
+  ]},
+  'Tennis 🎾':{games:[
+    {id:'ten1',time:'Today\n14:00',home:{name:'Djokovic',odds:1.80},away:{name:'Federer',odds:2.05}},
+    {id:'ten2',time:'Today\n17:00',home:{name:'Nadal',   odds:1.95},away:{name:'Alcaraz',odds:1.90}},
+    {id:'ten3',time:'Tom.\n13:00', home:{name:'Osaka',   odds:2.15},away:{name:'Swiatek',odds:1.75}}
+  ]},
+  'NFL 🏈':{games:[
+    {id:'nfl1',time:'Sun\n18:25',home:{name:'Chiefs',  odds:1.88},away:{name:'Cowboys',odds:2.20}},
+    {id:'nfl2',time:'Sun\n21:20',home:{name:'49ers',   odds:1.92},away:{name:'Rams',   odds:2.45}},
+    {id:'nfl3',time:'Mon\n01:15',home:{name:'Patriots',odds:2.30},away:{name:'Eagles', odds:2.00}}
+  ]}
+};
+ 
+// ─── INIT ────────────────────────────────────────
+window.addEventListener('load', () => {
+  buildSports();
+  document.getElementById('stakeInput').value = S.stake;
+  botMsg('Welcome to BetChat! 👋\n\nTap 🏆 Browse to pick selections.\n• 1 pick → Single Bet\n• 2+ picks → Multi Bet (automatic)\n\nYou can also just chat with me!');
+  updateStats(); updateIndicator();
+});
+ 
+// ─── NAVIGATION ──────────────────────────────────
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('#bottomNav .nav-item').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+function deskTab(tab, btn) {
+  document.querySelectorAll('.sdbar-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('deskActive').classList.toggle('hidden', tab!=='active');
+  document.getElementById('deskHistory').classList.toggle('hidden', tab!=='history');
+}
+function mobBetsTab(tab, btn) {
+  document.querySelectorAll('#betsPage .page-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('mobActive').classList.toggle('hidden', tab!=='active');
+  document.getElementById('mobHistory').classList.toggle('hidden', tab!=='history');
+}
+function showProfile() {
+  M.toast({html:`👤 Balance: $${S.balance.toFixed(2)} | Bets: ${S.totalBets}`, classes:'rounded'});
+}
+ 
+// ─── SPORTS SHEET ────────────────────────────────
+function openSheet() {
+  S.selections = [];
+  buildSports();
+  updateIndicator();
+  document.getElementById('teamSearch').value = '';
+  document.getElementById('sportsOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeSheet() {
+  S.selections = [];
+  document.getElementById('sportsOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+  updateIndicator();
+}
+function overlayTap(e) {
+  if (e.target === document.getElementById('sportsOverlay')) closeSheet();
+}
+ 
+function buildSports() {
+  const list = document.getElementById('sportsList');
+  list.innerHTML = '';
+  Object.entries(SPORTS).forEach(([sport, data]) => {
+    const cat = document.createElement('div');
+    cat.className = 'sport-cat'; cat.dataset.sport = sport;
+ 
+    const hdr = document.createElement('div');
+    hdr.className = 'sport-cat-hdr';
+    hdr.innerHTML = `<div class="sport-cat-name">${sport}</div><span class="material-icons sport-chevron">expand_more</span>`;
+    hdr.onclick = () => cat.classList.toggle('open');
+ 
+    const games = document.createElement('div');
+    games.className = 'sport-games';
+ 
+    data.games.forEach(game => {
+      const row = document.createElement('div');
+      row.className = 'game-row'; row.dataset.gameId = game.id;
+ 
+      const tc = document.createElement('div');
+      tc.className = 'game-time-col';
+      tc.innerHTML = `<div class="game-time-txt">${game.time}</div>`;
+ 
+      const tw = document.createElement('div');
+      tw.className = 'game-teams';
+ 
+      const mkBtn = (label, odds, outcome) => {
+        const b = document.createElement('button');
+        b.className = 'team-btn' + (outcome==='draw' ? ' draw-btn' : '');
+        b.dataset.gameId = game.id; b.dataset.outcome = outcome;
+        b.innerHTML = `<span class="tbtn-name">${label}</span><span class="tbtn-odds">${odds.toFixed(2)}</span>`;
+        b.onclick = () => pickTeam(sport, game, label, odds, outcome, b, row);
+        return b;
+      };
+ 
+      tw.appendChild(mkBtn(game.home.name, game.home.odds, 'home'));
+      if (game.draw !== undefined) tw.appendChild(mkBtn('Draw', game.draw, 'draw'));
+      tw.appendChild(mkBtn(game.away.name, game.away.odds, 'away'));
+ 
+      row.appendChild(tc); row.appendChild(tw);
+      games.appendChild(row);
+    });
+ 
+    cat.appendChild(hdr); cat.appendChild(games);
+    list.appendChild(cat);
+  });
+}
+ 
+function pickTeam(sport, game, label, odds, outcome, btn, row) {
+  S.selections = S.selections.filter(s => s.gameId !== game.id);
+  row.querySelectorAll('.team-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  S.selections.push({gameId:game.id, sport, team:label, odds});
+  updateIndicator();
+}
+ 
+function confirmSel() {
+  if (!S.selections.length) {
+    M.toast({html:'⚠️ Pick at least one team', classes:'rounded'});
+    return;
+  }
+  const sels = [...S.selections];
+  closeSheet();
+  showConfirm(sels);
+}
+ 
+function filterGames() {
+  const q = document.getElementById('teamSearch').value.toLowerCase().trim();
+  document.querySelectorAll('.sport-cat').forEach(cat => {
+    const sn = cat.dataset.sport.toLowerCase();
+    let match = false;
+    cat.querySelectorAll('.game-row').forEach(row => {
+      const names = [...row.querySelectorAll('.tbtn-name')].map(n=>n.textContent.toLowerCase());
+      const ok = !q || sn.includes(q) || names.some(n=>n.includes(q));
+      row.style.display = ok ? 'flex' : 'none';
+      if (ok) match = true;
+    });
+    cat.style.display = (!q || match) ? 'block' : 'none';
+    if (q && match) cat.classList.add('open');
+  });
+}
+ 
+// ─── CONFIRM PANEL ───────────────────────────────
+function showConfirm(sels) {
+  document.getElementById('betConfirmPanel')?.remove();
+  const isMulti = sels.length > 1;
+  const odds = sels.reduce((a,s) => a*s.odds, 1);
+  const pot  = S.stake * odds;
+ 
+  const sHTML = sels.map((s,i) => `
+    <div class="confirm-sel">
+      <div>
+        <div class="confirm-name">${s.team}</div>
+        <div class="confirm-sport">${s.sport} &bull; ${s.odds.toFixed(2)}</div>
+      </div>
+      <button class="confirm-rmv" onclick="removeLeg(${i})">
+        <span class="material-icons">close</span>
+      </button>
+    </div>`).join('');
+ 
+  const label = isMulti ? `🔗 Multi Bet (${sels.length} legs)` : '🎯 Single Bet';
+  const d = document.createElement('div');
+  d.id = 'betConfirmPanel'; d.className = 'msg bot';
+  d.dataset.selections = JSON.stringify(sels);
+  d.innerHTML = `
+    <div class="msg-av">BC</div>
+    <div class="msg-body">
+      <div class="confirm-panel">
+        <div class="confirm-hdr">${label}</div>
+        ${sHTML}
+        <div class="confirm-sum">
+          Combined Odds: <strong>${odds.toFixed(2)}</strong><br>
+          Stake: <strong>$${S.stake}</strong> &rarr; Potential: <strong>$${pot.toFixed(2)}</strong>
+        </div>
+        <div class="confirm-actions">
+          <button class="btn-place" onclick="placeBet()">Place Bet</button>
+          <button class="btn-cancel-sm" onclick="cancelBet()">Cancel</button>
+        </div>
+      </div>
+    </div>`;
+ 
+  const chat = document.getElementById('chatMessages');
+  chat.appendChild(d); chat.scrollTop = chat.scrollHeight;
+ 
+  // go to chat page on mobile
+  const nc = document.getElementById('navChat');
+  if (nc) showPage('chatPage', nc);
+}
+ 
+function removeLeg(i) {
+  const p = document.getElementById('betConfirmPanel');
+  if (!p) return;
+  let sels = JSON.parse(p.dataset.selections);
+  sels.splice(i,1); p.remove();
+  sels.length ? showConfirm(sels) : botMsg('❌ All selections removed.');
+}
+ 
+function placeBet() {
+  const p = document.getElementById('betConfirmPanel');
+  if (!p) return;
+  const sels = JSON.parse(p.dataset.selections);
+  if (!sels.length) return;
+  if (S.stake > S.balance) {
+    M.toast({html:`❌ Insufficient balance ($${S.balance.toFixed(2)})`, classes:'rounded red darken-1'});
+    return;
+  }
+  const isMulti = sels.length > 1;
+  const totalOdds = sels.reduce((a,s) => a*s.odds, 1);
+  const bet = {
+    id:Date.now(), amount:S.stake,
+    prediction: sels.map(s=>`${s.team} (${s.odds.toFixed(2)})`).join(' + '),
+    sport: isMulti ? 'Multi Bet' : sels[0].sport,
+    odds: totalOdds, selections:sels,
+    status:'pending', result:'pending',
+    timestamp:new Date().toLocaleString(),
+    type: isMulti ? 'multi' : 'single'
+  };
+  S.activeBets.push(bet); S.betHistory.push(bet);
+  S.balance -= S.stake; S.totalBets++;
+  p.remove(); updateStats(); updateLists();
+  const tl = isMulti ? `Multi Bet (${sels.length} legs)` : 'Single Bet';
+  botMsg(`✅ ${tl} placed!\n\n💵 Stake: $${S.stake.toFixed(2)}\n🎲 Odds: ${totalOdds.toFixed(2)}\n💰 Potential: $${(S.stake*totalOdds).toFixed(2)}\n\nBalance: $${S.balance.toFixed(2)}`);
+  M.toast({html:'🎉 Bet placed!', classes:'rounded green darken-1'});
+}
+ 
+function cancelBet() {
+  document.getElementById('betConfirmPanel')?.remove();
+  botMsg('❌ Bet cancelled.');
+}
+ 
+// ─── CHAT ────────────────────────────────────────
+document.getElementById('msgInput').addEventListener('keypress', e => {
+  if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+});
+document.getElementById('msgInput').addEventListener('input', function() {
+  this.style.height='auto';
+  this.style.height=Math.min(this.scrollHeight,88)+'px';
+});
+document.getElementById('sendBtn').addEventListener('click', sendMsg);
+document.getElementById('stakeInput').addEventListener('change', function() {
+  S.stake = parseFloat(this.value)||50;
+});
+ 
+function sendMsg() {
+  const v = document.getElementById('msgInput').value.trim();
+  if (!v) return;
+  userMsg(v);
+  document.getElementById('msgInput').value='';
+  document.getElementById('msgInput').style.height='auto';
+  processMsg(v);
+}
+ 
+function userMsg(text) {
+  const c = document.getElementById('chatMessages');
+  const d = document.createElement('div');
+  d.className='msg user';
+  d.innerHTML=`<div class="msg-body"><div class="msg-txt">${esc(text)}</div></div><div class="msg-av">You</div>`;
+  c.appendChild(d); c.scrollTop=c.scrollHeight;
+}
+ 
+function botMsg(text, suggs=null) {
+  const c = document.getElementById('chatMessages');
+  const d = document.createElement('div');
+  d.className='msg bot';
+  let inner=`<div class="msg-txt">${esc(text)}</div>`;
+  if (suggs) {
+    inner+=`<div class="bet-suggestion"><div class="sugg-lbl">💡 Trending picks</div>`;
+    suggs.forEach(s => {
+      inner+=`<div class="sugg-opt" onclick="suggTap('${s.sport}','${s.team}',${s.odds})">
+        <div class="sugg-opt-name">${s.team} — ${s.sport}</div>
+        <div class="sugg-opt-odds">${s.odds.toFixed(2)} odds • Potential: $${(S.stake*s.odds).toFixed(2)}</div>
+      </div>`;
+    });
+    inner+='</div>';
+  }
+  d.innerHTML=`<div class="msg-av">BC</div><div class="msg-body">${inner}</div>`;
+  c.appendChild(d); c.scrollTop=c.scrollHeight;
+}
+ 
+function showTyping() {
+  if (S.typing) return; S.typing=true;
+  const c=document.getElementById('chatMessages');
+  const d=document.createElement('div');
+  d.id='typingEl'; d.className='msg bot';
+  d.innerHTML=`<div class="msg-av">BC</div><div class="msg-body"><div class="msg-txt" style="padding:0"><div class="typing-dots"><span></span><span></span><span></span></div></div></div>`;
+  c.appendChild(d); c.scrollTop=c.scrollHeight;
+}
+function hideTyping() {
+  document.getElementById('typingEl')?.remove(); S.typing=false;
+}
+ 
+function processMsg(msg) {
+  const lo=msg.toLowerCase(); showTyping();
+  setTimeout(()=>{
+    hideTyping();
+    if (lo.includes('browse')||lo.includes('sport')||lo.includes('game')) {
+      openSheet(); botMsg('🏆 Sports browser opened! Pick selections and tap Confirm.');
+    } else if (lo.includes('recommend')||lo.includes('suggest')||lo.includes('tip')) {
+      botMsg('Here are some trending picks:', genSuggs());
+    } else if (lo.includes('balance')||lo.includes('how much')) {
+      botMsg(`💰 Balance: $${S.balance.toFixed(2)}\n📋 Active: ${S.activeBets.length}\n🎯 Stake: $${S.stake}`);
+    } else if (lo.includes('history')||lo.includes('my bets')) {
+      showPage('betsPage', document.getElementById('navBets'));
+      botMsg(`📊 Bet history: ${S.betHistory.length} bets.`);
+    } else {
+      const r=[
+        `Got it! 👍 Tap 🏆 Browse to pick teams. 1 pick = Single, 2+ = Multi — auto!`,
+        `Browse sports 🏆, pick any teams across games, then confirm your bet.`,
+        `Your stake is $${S.stake}. Pick as many selections as you like across different games!`,
+        `Ready! 🎯 Open the sports browser and choose your teams — bet type sets itself.`
+      ];
+      botMsg(r[Math.floor(Math.random()*r.length)]);
+    }
+  }, 650);
+}
+ 
+function suggTap(sport, team, odds) {
+  openSheet(); botMsg(`🏆 Find ${team} in the browser and select them!`);
+}
+ 
+function genSuggs() {
+  const out=[]; const entries=Object.entries(SPORTS);
+  for(let i=0;i<3;i++){
+    const [sport,data]=entries[Math.floor(Math.random()*entries.length)];
+    const g=data.games[Math.floor(Math.random()*data.games.length)];
+    const t=Math.random()>.5?g.home:g.away;
+    out.push({sport,team:t.name,odds:t.odds});
+  }
+  return out;
+}
+ 
+// ─── STATS + LISTS ───────────────────────────────
+function updateStats() {
+  const f=n=>'$'+n.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
+  ['mbBal','dsBalance'].forEach(id=>(document.getElementById(id).textContent=f(S.balance)));
+  ['mbBets','dsBets']  .forEach(id=>(document.getElementById(id).textContent=S.totalBets));
+  ['mbWin','dsWin']    .forEach(id=>(document.getElementById(id).textContent=f(S.totalWinnings)));
+}
+ 
+function updateIndicator() {
+  const n=S.selections.length, el=document.getElementById('betIndicator');
+  if(!n) { el.textContent='Pick your selections'; return; }
+  if(n===1){ el.textContent='🎯 Single • 1 selection'; return; }
+  const o=S.selections.reduce((a,s)=>a*s.odds,1);
+  el.textContent=`🔗 Multi • ${n} legs @ ${o.toFixed(2)}`;
+}
+ 
+function updateLists() {
+  const mkCards = (bets, isEmpty) => {
+    if (!bets.length) return isEmpty;
+    return [...bets].reverse().map(b => {
+      const tl = b.type==='multi'?`🔗 Multi (${b.selections?.length||'?'} legs)`:'🎯 Single';
+      return `<div class="bet-card ${b.result!=='pending'?'result-'+b.result:''}">
+        <div class="bc-head">
+          <div class="bc-sport">${b.sport}</div>
+          <div class="bc-badge ${b.result}">${b.result==='pending'?'Pending':b.result[0].toUpperCase()+b.result.slice(1)}</div>
+        </div>
+        <div class="bc-pred">${b.prediction}</div>
+        <div class="bc-foot">
+          <span>Stake <strong>$${b.amount.toFixed(2)}</strong></span>
+          <span>Odds <strong>${b.odds.toFixed(2)}</strong></span>
+          <span>Win <strong class="win">$${(b.amount*b.odds).toFixed(2)}</strong></span>
+        </div>
+      </div>`;
+    }).join('');
+  };
+  const emptyA='<div class="empty-msg"><span class="material-icons">receipt_long</span>No active bets yet</div>';
+  const emptyH='<div class="empty-msg"><span class="material-icons">history</span>No history yet</div>';
+  document.getElementById('deskActive').innerHTML  = mkCards(S.activeBets,  emptyA);
+  document.getElementById('deskHistory').innerHTML = mkCards(S.betHistory,  emptyH);
+  document.getElementById('mobActive').innerHTML   = mkCards(S.activeBets,  emptyA);
+  document.getElementById('mobHistory').innerHTML  = mkCards(S.betHistory,  emptyH);
+}
+ 
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
+ 
+
