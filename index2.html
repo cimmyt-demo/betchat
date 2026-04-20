@@ -1,0 +1,2031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BetChat - Bet Through Conversation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-dark: #0f1419;
+            --secondary-dark: #1a202c;
+            --accent-neon: #00d9ff;
+            --accent-neon-dark: #00a8cc;
+            --accent-gold: #ffd700;
+            --success-green: #00e676;
+            --danger-red: #ff1744;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b8c1;
+            --border-color: #2d3748;
+            --hover-bg: #2d3748;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary-dark) 0%, #1a1f2e 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(0, 217, 255, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255, 215, 0, 0.02) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Sidebar - Active Bets */
+        .sidebar {
+            width: 320px;
+            background: var(--secondary-dark);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            animation: slideInLeft 0.6s ease-out;
+        }
+
+        @keyframes slideInLeft {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent-neon), var(--accent-gold));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            color: var(--primary-dark);
+        }
+
+        .sidebar-header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .sidebar-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 16px;
+        }
+
+        .sidebar-tab {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .sidebar-tab:hover {
+            color: var(--text-primary);
+        }
+
+        .sidebar-tab.active {
+            color: var(--accent-neon);
+            border-bottom-color: var(--accent-neon);
+        }
+
+        .bets-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            gap: 12px;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+
+        .bets-container.hidden {
+            display: none;
+        }
+
+        .bet-card {
+            background: var(--primary-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bet-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, var(--accent-neon), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .bet-card:hover {
+            border-color: var(--accent-neon);
+            background: rgba(0, 217, 255, 0.05);
+        }
+
+        .bet-card:hover::before {
+            opacity: 0.1;
+        }
+
+        .bet-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .bet-event {
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+
+        .bet-type-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            background: rgba(0, 217, 255, 0.15);
+            color: var(--accent-neon);
+            font-weight: 600;
+        }
+
+        .bet-status {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(0, 230, 118, 0.15);
+            color: var(--success-green);
+            font-weight: 600;
+        }
+
+        .bet-status.pending {
+            background: rgba(255, 215, 0, 0.15);
+            color: var(--accent-gold);
+        }
+
+        .bet-status.won {
+            background: rgba(0, 230, 118, 0.15);
+            color: var(--success-green);
+        }
+
+        .bet-status.lost {
+            background: rgba(255, 23, 68, 0.15);
+            color: var(--danger-red);
+        }
+
+        .bet-amount {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .bet-amount strong {
+            color: var(--accent-neon);
+            font-size: 13px;
+        }
+
+        .bet-odds {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .bet-odds strong {
+            color: var(--accent-gold);
+        }
+
+        .bet-selections {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* Top Menu */
+        .top-menu {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 24px;
+            background: var(--secondary-dark);
+            border-bottom: 1px solid var(--border-color);
+            animation: slideDown 0.6s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .menu-left, .menu-right {
+            display: flex;
+            gap: 12px;
+        }
+
+        .menu-center {
+            text-align: center;
+            flex: 1;
+        }
+
+        .menu-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--primary-dark);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .menu-btn:hover {
+            border-color: var(--accent-neon);
+            background: rgba(0, 217, 255, 0.1);
+        }
+
+        .bet-type-indicator {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent-neon);
+            padding: 6px 12px;
+            background: rgba(0, 217, 255, 0.1);
+            border-radius: 6px;
+            border: 1px solid var(--accent-neon);
+        }
+
+        /* Main Chat Area */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--primary-dark);
+        }
+
+        .header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--accent-neon), var(--accent-gold));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 24px;
+            font-size: 13px;
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--accent-neon);
+        }
+
+        /* Chat Messages */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            animation: fadeIn 0.6s ease-out 0.2s both;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            animation: messageSlideIn 0.4s ease-out;
+        }
+
+        @keyframes messageSlideIn {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .message.bot .message-avatar {
+            background: linear-gradient(135deg, var(--accent-neon), var(--accent-gold));
+            color: var(--primary-dark);
+        }
+
+        .message.user .message-avatar {
+            background: var(--secondary-dark);
+            color: var(--accent-neon);
+        }
+
+        .message-content {
+            max-width: 60%;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .message-text {
+            background: var(--secondary-dark);
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            font-size: 14px;
+            line-height: 1.5;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .message.user .message-text {
+            background: linear-gradient(135deg, rgba(0, 217, 255, 0.15), rgba(255, 215, 0, 0.1));
+            border-color: var(--accent-neon);
+            color: var(--text-primary);
+        }
+
+        .message.bot .message-text {
+            color: var(--text-primary);
+        }
+
+        .bet-suggestion {
+            background: var(--secondary-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        .bet-suggestion-header {
+            color: var(--accent-neon);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .bet-option {
+            padding: 8px;
+            background: var(--primary-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .bet-option:last-child {
+            margin-bottom: 0;
+        }
+
+        .bet-option:hover {
+            border-color: var(--accent-neon);
+            background: rgba(0, 217, 255, 0.05);
+        }
+
+        .bet-option-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .bet-option-odds {
+            color: var(--accent-gold);
+            font-size: 12px;
+        }
+
+        /* Single Bet Pending Panel */
+        .single-bet-panel {
+            background: var(--secondary-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 13px;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .single-bet-panel.visible {
+            display: block;
+        }
+
+        .single-bet-header {
+            color: var(--accent-neon);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .single-bet-info {
+            padding: 10px;
+            background: var(--primary-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+
+        .single-bet-team {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .single-bet-details {
+            color: var(--text-secondary);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .single-bet-summary {
+            padding: 8px;
+            background: var(--primary-dark);
+            border: 1px solid var(--accent-neon);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            color: var(--accent-neon);
+            font-weight: 600;
+        }
+
+        /* Multi-bet panel */
+        .multibet-panel {
+            background: var(--secondary-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 13px;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .multibet-panel.visible {
+            display: block;
+        }
+
+        .multibet-header {
+            color: var(--accent-neon);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .multibet-selection {
+            padding: 8px;
+            background: var(--primary-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .multibet-selection:last-child {
+            margin-bottom: 0;
+        }
+
+        .selection-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .selection-team {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .selection-odds {
+            color: var(--accent-gold);
+            font-size: 11px;
+        }
+
+        .remove-btn {
+            background: var(--danger-red);
+            border: none;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .remove-btn:hover {
+            background: #ff5252;
+        }
+
+        .multibet-summary {
+            padding: 8px;
+            background: var(--primary-dark);
+            border: 1px solid var(--accent-neon);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            color: var(--accent-neon);
+            font-weight: 600;
+        }
+
+        .bet-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            flex: 1;
+            min-width: 80px;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .place-btn {
+            background: var(--success-green);
+            color: var(--primary-dark);
+        }
+
+        .place-btn:hover {
+            background: #00ff88;
+        }
+
+        .add-btn {
+            background: var(--accent-neon);
+            color: var(--primary-dark);
+        }
+
+        .add-btn:hover {
+            background: #00f0ff;
+        }
+
+        .cancel-btn {
+            background: var(--danger-red);
+            color: white;
+        }
+
+        .cancel-btn:hover {
+            background: #ff5252;
+        }
+
+        /* Chat Input */
+        .chat-input-area {
+            padding: 20px 24px;
+            border-top: 1px solid var(--border-color);
+            background: var(--secondary-dark);
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .input-field {
+            flex: 1;
+            background: var(--primary-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: var(--text-primary);
+            font-size: 14px;
+            resize: none;
+            max-height: 100px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--accent-neon);
+            box-shadow: 0 0 0 3px rgba(0, 217, 255, 0.1);
+        }
+
+        .input-field::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .input-controls {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+
+        .stake-input {
+            width: 100px;
+            background: var(--primary-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            color: var(--text-primary);
+            font-size: 13px;
+            text-align: center;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .stake-input:focus {
+            outline: none;
+            border-color: var(--accent-neon);
+            box-shadow: 0 0 0 3px rgba(0, 217, 255, 0.1);
+        }
+
+        .stake-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .send-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: none;
+            background: linear-gradient(135deg, var(--accent-neon), var(--accent-gold));
+            color: var(--primary-dark);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.4);
+        }
+
+        .send-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .modal.hidden {
+            display: none;
+        }
+
+        .modal-content {
+            background: var(--secondary-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        .sports-modal {
+            width: 90%;
+            max-width: 500px;
+            overflow: hidden;
+        }
+
+        .bet-type-modal {
+            width: 90%;
+            max-width: 450px;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .modal-header h2 {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .modal-close:hover {
+            color: var(--accent-neon);
+        }
+
+        .modal-body {
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        .modal-body::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .modal-body::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .modal-body::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .modal-body::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-neon);
+        }
+
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+
+        .modal-ok-btn {
+            background: var(--success-green);
+            color: var(--primary-dark);
+        }
+
+        .modal-ok-btn:hover {
+            background: #00ff88;
+        }
+
+        .modal-cancel-btn {
+            background: var(--danger-red);
+            color: white;
+        }
+
+        .modal-cancel-btn:hover {
+            background: #ff5252;
+        }
+
+        .sports-search {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .sports-search input {
+            width: 100%;
+            padding: 12px 16px 12px 40px;
+            background: var(--primary-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .sports-search input:focus {
+            outline: none;
+            border-color: var(--accent-neon);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        .sports-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .sports-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sports-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sports-list::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .sports-list::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-neon);
+        }
+
+        .sport-category {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        .sport-category-header {
+            padding: 12px 16px;
+            background: var(--primary-dark);
+            font-weight: 600;
+            color: var(--accent-neon);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+            border-radius: 8px;
+            transition: border-radius 0.1s;
+        }
+
+        .sport-category-header.open {
+            border-radius: 8px 8px 0 0;
+        }
+
+        .sport-category-header:hover {
+            background: rgba(0, 217, 255, 0.1);
+        }
+
+        .sport-teams {
+            display: none;
+            padding: 12px 16px;
+            background: var(--primary-dark);
+            border-top: 1px solid var(--border-color);
+            flex-direction: column;
+            gap: 8px;
+            border-radius: 0 0 8px 8px;
+        }
+
+        .sport-teams.visible {
+            display: flex;
+        }
+
+        .game-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 10px;
+            background: var(--secondary-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+        }
+
+        .game-time {
+            font-size: 10px;
+            color: var(--text-secondary);
+            width: 72px;
+            flex-shrink: 0;
+            text-align: center;
+            line-height: 1.3;
+        }
+
+        .game-team-btn {
+            flex: 1;
+            padding: 6px 8px;
+            background: var(--primary-dark);
+            border: 2px solid var(--border-color);
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-align: center;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            line-height: 1.2;
+        }
+
+        .game-team-btn:hover {
+            border-color: var(--accent-neon);
+            background: rgba(0, 217, 255, 0.07);
+        }
+
+        .game-team-btn.selected {
+            border-color: var(--success-green);
+            background: rgba(0, 230, 118, 0.15);
+            color: var(--success-green);
+        }
+
+        .game-team-odds {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--accent-gold);
+        }
+
+        .game-team-btn.selected .game-team-odds {
+            color: var(--success-green);
+        }
+
+        .game-vs {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+            width: 20px;
+            text-align: center;
+        }
+
+        .bet-type-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .bet-type-card {
+            padding: 20px;
+            background: var(--primary-dark);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .bet-type-card:hover {
+            border-color: var(--accent-neon);
+            background: rgba(0, 217, 255, 0.05);
+        }
+
+        .bet-type-card.active {
+            border-color: var(--accent-neon);
+            background: rgba(0, 217, 255, 0.1);
+        }
+
+        .bet-type-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .bet-type-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .bet-type-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .bet-type-info {
+            padding: 16px;
+            background: var(--primary-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 20px;
+            font-size: 13px;
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 12px 16px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-neon);
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                opacity: 0.5;
+            }
+            30% {
+                opacity: 1;
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(0, 230, 118, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(0, 230, 118, 0);
+            }
+        }
+
+        .bet-placed {
+            animation: pulse 0.6s ease-out;
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 280px;
+            }
+            .message-content {
+                max-width: 75%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                height: 200px;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+            .header-stats {
+                gap: 16px;
+            }
+            .message-content {
+                max-width: 85%;
+            }
+            .input-controls {
+                flex-direction: column;
+                width: 100%;
+            }
+            .stake-input {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">₿</div>
+                <h1>BetChat</h1>
+            </div>
+            <div class="sidebar-tabs">
+                <button class="sidebar-tab active" data-tab="active" onclick="switchSidebarTab('active')">Active Bets</button>
+                <button class="sidebar-tab" data-tab="history" onclick="switchSidebarTab('history')">History</button>
+            </div>
+            <div class="bets-container" id="betsContainer">
+                <div class="empty-state">No active bets yet</div>
+            </div>
+            <div class="bets-container hidden" id="historyContainer">
+                <div class="empty-state">No bet history yet</div>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="main-content">
+            <!-- Top Menu Bar -->
+            <div class="top-menu">
+                <div class="menu-left">
+                    <button class="menu-btn" id="homeBtn" title="Home" onclick="closeAllModals(); addBotMessage('Welcome back! 👋 How can I help you with your bets today?')">🏠</button>
+                    <button class="menu-btn" id="sportsBtn" title="Browse Sports" onclick="openSportsModal()">🏆</button>
+                    <button class="menu-btn" id="betTypeBtn" title="Bet Types" onclick="openBetTypeModal()">🎯</button>
+                </div>
+                <div class="menu-center">
+                    <div class="bet-type-indicator" id="betTypeIndicator">Single Bet Mode</div>
+                </div>
+                <div class="menu-right">
+                    <button class="menu-btn" id="settingsBtn" title="Settings" onclick="alert('Settings coming soon!')">⚙️</button>
+                    <button class="menu-btn" id="profileBtn" title="Profile" onclick="alert('Profile: Total Bets: ' + state.totalBets + ', Balance: $' + state.balance.toFixed(2))">👤</button>
+                </div>
+            </div>
+
+            <div class="header">
+                <div class="header-title">Chat & Bet in Real-Time</div>
+                <div class="header-stats">
+                    <div class="stat">
+                        <div class="stat-label">Total Bets</div>
+                        <div class="stat-value" id="totalBets">0</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Winnings</div>
+                        <div class="stat-value" id="totalWinnings">$0.00</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">Balance</div>
+                        <div class="stat-value" id="userBalance">$1000.00</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sports Browser Modal -->
+            <div class="modal hidden" id="sportsModal">
+                <div class="modal-content sports-modal">
+                    <div class="modal-header">
+                        <h2>Browse Sports & Teams</h2>
+                        <button class="modal-close" onclick="closeSportsModal()">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="sports-search">
+                            <input type="text" id="teamSearch" placeholder="Search for a team or sport..." onkeyup="filterSports()">
+                            <span class="search-icon">🔍</span>
+                        </div>
+                        <div class="sports-list" id="sportsList"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="modal-btn modal-ok-btn" onclick="confirmSportsSelection()">OK</button>
+                        <button class="modal-btn modal-cancel-btn" onclick="cancelSportsSelection()">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bet Type Selector Modal -->
+            <div class="modal hidden" id="betTypeModal">
+                <div class="modal-content bet-type-modal">
+                    <div class="modal-header">
+                        <h2>Select Bet Type</h2>
+                        <button class="modal-close" onclick="closeBetTypeModal()">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="bet-type-options">
+                            <div class="bet-type-card" onclick="selectBetType('single')">
+                                <div class="bet-type-icon">🎯</div>
+                                <div class="bet-type-name">Single Bet</div>
+                                <div class="bet-type-desc">Bet on one outcome</div>
+                            </div>
+                            <div class="bet-type-card" onclick="selectBetType('multi')">
+                                <div class="bet-type-icon">🔗</div>
+                                <div class="bet-type-name">Multi Bet</div>
+                                <div class="bet-type-desc">Combine multiple selections</div>
+                            </div>
+                        </div>
+                        <div class="bet-type-info" id="betTypeInfo"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chatMessages"></div>
+
+            <div class="chat-input-area">
+                <div class="input-wrapper">
+                    <textarea 
+                        class="input-field" 
+                        id="messageInput" 
+                        placeholder="Chat naturally... e.g., 'I want to bet on Lakers' or ask 'What bets do you recommend?'"
+                        rows="1"
+                    ></textarea>
+                    <div class="input-controls">
+                        <input 
+                            type="number" 
+                            class="stake-input" 
+                            id="stakeInput" 
+                            placeholder="Stake" 
+                            min="1" 
+                            step="1"
+                        >
+                        <button class="send-btn" id="sendBtn">→</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Application State
+        const state = {
+            balance: 1000,
+            totalBets: 0,
+            totalWinnings: 0,
+            activeBets: [],
+            betHistory: [],
+            currentBetType: 'single',
+            multiBetSelections: [],
+            selectedTeamsTemp: [],
+            pendingSingleBet: null,
+            defaultStake: 50,
+            chatHistory: [],
+            isTyping: false
+        };
+
+        // Sample sports events and odds
+        const sportsData = {
+            'NBA': {
+                games: [
+                    { id: 'nba1', time: 'Today 19:30', home: { name: 'Lakers', odds: 1.95 }, away: { name: 'Celtics', odds: 1.85 } },
+                    { id: 'nba2', time: 'Today 21:00', home: { name: 'Golden State', odds: 1.90 }, away: { name: 'Denver', odds: 1.95 } },
+                    { id: 'nba3', time: 'Tomorrow 20:00', home: { name: 'Miami Heat', odds: 2.10 }, away: { name: 'Chicago Bulls', odds: 1.80 } }
+                ]
+            },
+            'Premier League': {
+                games: [
+                    { id: 'epl1', time: 'Sat 12:30', home: { name: 'Man United', odds: 2.10 }, away: { name: 'Liverpool', odds: 1.75 } },
+                    { id: 'epl2', time: 'Sat 15:00', home: { name: 'Arsenal', odds: 1.90 }, away: { name: 'Chelsea', odds: 2.15 } },
+                    { id: 'epl3', time: 'Sun 16:30', home: { name: 'Man City', odds: 1.65 }, away: { name: 'Tottenham', odds: 2.30 } }
+                ]
+            },
+            'La Liga': {
+                games: [
+                    { id: 'lla1', time: 'Sat 20:00', home: { name: 'Real Madrid', odds: 1.85 }, away: { name: 'Barcelona', odds: 2.10 } },
+                    { id: 'lla2', time: 'Sun 18:00', home: { name: 'Atletico Madrid', odds: 2.45 }, away: { name: 'Valencia', odds: 3.50 } },
+                    { id: 'lla3', time: 'Sun 20:00', home: { name: 'Sevilla', odds: 3.00 }, away: { name: 'Villarreal', odds: 2.60 } }
+                ]
+            },
+            'Tennis': {
+                games: [
+                    { id: 'ten1', time: 'Today 14:00', home: { name: 'Djokovic', odds: 1.80 }, away: { name: 'Federer', odds: 2.05 } },
+                    { id: 'ten2', time: 'Today 17:00', home: { name: 'Nadal', odds: 1.95 }, away: { name: 'Alcaraz', odds: 1.90 } },
+                    { id: 'ten3', time: 'Tomorrow 13:00', home: { name: 'Osaka', odds: 2.15 }, away: { name: 'Swiatek', odds: 1.75 } }
+                ]
+            },
+            'NFL': {
+                games: [
+                    { id: 'nfl1', time: 'Sun 18:25', home: { name: 'Chiefs', odds: 1.88 }, away: { name: 'Cowboys', odds: 2.20 } },
+                    { id: 'nfl2', time: 'Sun 21:20', home: { name: '49ers', odds: 1.92 }, away: { name: 'Rams', odds: 2.45 } },
+                    { id: 'nfl3', time: 'Mon 01:15', home: { name: 'Patriots', odds: 2.30 }, away: { name: 'Eagles', odds: 2.00 } }
+                ]
+            }
+        };
+
+        // DOM Elements
+        const chatMessagesEl = document.getElementById('chatMessages');
+        const messageInputEl = document.getElementById('messageInput');
+        const stakeInputEl = document.getElementById('stakeInput');
+        const sendBtnEl = document.getElementById('sendBtn');
+        const betsContainerEl = document.getElementById('betsContainer');
+        const historyContainerEl = document.getElementById('historyContainer');
+        const totalBetsEl = document.getElementById('totalBets');
+        const totalWinningsEl = document.getElementById('totalWinnings');
+        const userBalanceEl = document.getElementById('userBalance');
+        const sportsModalEl = document.getElementById('sportsModal');
+        const betTypeModalEl = document.getElementById('betTypeModal');
+        const betTypeIndicatorEl = document.getElementById('betTypeIndicator');
+        const sportsListEl = document.getElementById('sportsList');
+
+        // Initialize
+        window.addEventListener('load', () => {
+            renderSportsList();
+            stakeInputEl.value = state.defaultStake;
+            addBotMessage('Welcome to BetChat! 👋 I\'m your AI betting assistant.\n\n🎯 Single Bet: Select a team and click "Place Bet"\n🔗 Multi Bet: Select multiple teams and click "Place Multi-Bet"\n\nSet your stake and explore sports using the 🏆 button!');
+        });
+
+        // Auto-resize textarea
+        messageInputEl.addEventListener('input', () => {
+            messageInputEl.style.height = 'auto';
+            messageInputEl.style.height = Math.min(messageInputEl.scrollHeight, 100) + 'px';
+        });
+
+        // Update default stake
+        stakeInputEl.addEventListener('change', () => {
+            state.defaultStake = parseFloat(stakeInputEl.value) || 50;
+        });
+
+        // Send message on Enter
+        messageInputEl.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        sendBtnEl.addEventListener('click', sendMessage);
+
+        // Modal Functions
+        function openSportsModal() {
+            state.selectedTeamsTemp = [];
+            sportsModalEl.classList.remove('hidden');
+            renderSportsList();
+        }
+
+        function closeSportsModal() {
+            sportsModalEl.classList.add('hidden');
+            state.selectedTeamsTemp = [];
+        }
+
+        function confirmSportsSelection() {
+            if (state.selectedTeamsTemp.length === 0) {
+                addBotMessage('❌ No teams selected! Please select at least one team.');
+                return;
+            }
+
+            if (state.currentBetType === 'multi') {
+                // Add all selected teams to multi-bet
+                state.selectedTeamsTemp.forEach(selection => {
+                    const existing = state.multiBetSelections.some(s => s.team === selection.team);
+                    if (!existing) {
+                        state.multiBetSelections.push(selection);
+                    }
+                });
+                
+                closeSportsModal();
+                showMultiBetPanel();
+                addBotMessage(`✅ Added ${state.selectedTeamsTemp.length} team(s) to your multi-bet!`);
+            } else {
+                // Single bet - show confirmation panel
+                if (state.selectedTeamsTemp.length === 1) {
+                    const selection = state.selectedTeamsTemp[0];
+                    state.pendingSingleBet = selection;
+                    closeSportsModal();
+                    showSingleBetPanel();
+                } else {
+                    addBotMessage('⚠️ In Single Bet mode, select only ONE team at a time.');
+                    state.selectedTeamsTemp = [];
+                }
+            }
+        }
+
+        function cancelSportsSelection() {
+            state.selectedTeamsTemp = [];
+            closeSportsModal();
+            addBotMessage('❌ Team selection cancelled.');
+        }
+
+        function openBetTypeModal() {
+            betTypeModalEl.classList.remove('hidden');
+        }
+
+        function closeBetTypeModal() {
+            betTypeModalEl.classList.add('hidden');
+        }
+
+        function closeAllModals() {
+            closeSportsModal();
+            closeBetTypeModal();
+        }
+
+        function selectBetType(type) {
+            state.currentBetType = type;
+            state.multiBetSelections = [];
+            state.pendingSingleBet = null;
+            betTypeIndicatorEl.textContent = type === 'single' ? 'Single Bet Mode' : 'Multi Bet Mode';
+            closeBetTypeModal();
+            
+            const message = type === 'single' 
+                ? '🎯 Single Bet Mode activated! Select a team and click "Place Bet" to confirm.'
+                : '🔗 Multi Bet Mode activated! Select multiple teams and click "Place Multi-Bet" to combine them.';
+            
+            addBotMessage(message);
+        }
+
+        function renderSportsList() {
+            sportsListEl.innerHTML = '';
+            
+            Object.entries(sportsData).forEach(([ sport, data ]) => {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'sport-category';
+                
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'sport-category-header';
+                headerDiv.innerHTML = `<span>${sport}</span><span>▼</span>`;
+                headerDiv.onclick = () => {
+                    teamsDiv.classList.toggle('visible');
+                    headerDiv.classList.toggle('open', teamsDiv.classList.contains('visible'));
+                    headerDiv.querySelector('span:last-child').style.transform = teamsDiv.classList.contains('visible') ? 'rotate(180deg)' : 'rotate(0)';
+                };
+                
+                const teamsDiv = document.createElement('div');
+                teamsDiv.className = 'sport-teams';
+                
+                data.games.forEach(game => {
+                    const gameRow = document.createElement('div');
+                    gameRow.className = 'game-row';
+
+                    const makeTeamBtn = (team, side) => {
+                        const btn = document.createElement('button');
+                        btn.className = 'game-team-btn';
+                        btn.dataset.gameId = game.id;
+                        btn.dataset.team = team.name;
+                        btn.innerHTML = `<span>${team.name}</span><span class="game-team-odds">${team.odds.toFixed(2)}</span>`;
+                        btn.onclick = () => selectGameTeam(sport, game, team, btn, gameRow);
+                        return btn;
+                    };
+
+                    const homeBtn = makeTeamBtn(game.home, 'home');
+                    const vsSpan = document.createElement('span');
+                    vsSpan.className = 'game-vs';
+                    vsSpan.textContent = 'vs';
+                    const awayBtn = makeTeamBtn(game.away, 'away');
+                    const timeDiv = document.createElement('div');
+                    timeDiv.className = 'game-time';
+                    timeDiv.textContent = game.time;
+
+                    gameRow.appendChild(timeDiv);
+                    gameRow.appendChild(homeBtn);
+                    gameRow.appendChild(vsSpan);
+                    gameRow.appendChild(awayBtn);
+                    teamsDiv.appendChild(gameRow);
+                });
+                
+                categoryDiv.appendChild(headerDiv);
+                categoryDiv.appendChild(teamsDiv);
+                sportsListEl.appendChild(categoryDiv);
+            });
+        }
+
+        function selectGameTeam(sport, game, team, clickedBtn, gameRow) {
+            // Deselect the other team button in this game row
+            gameRow.querySelectorAll('.game-team-btn').forEach(btn => btn.classList.remove('selected'));
+
+            // Remove any prior selection for this game from temp selections
+            state.selectedTeamsTemp = state.selectedTeamsTemp.filter(s => s.gameId !== game.id);
+
+            // If single-bet mode, clear all other selections too
+            if (state.currentBetType === 'single') {
+                state.selectedTeamsTemp = [];
+                document.querySelectorAll('.game-team-btn.selected').forEach(el => el.classList.remove('selected'));
+            }
+
+            clickedBtn.classList.add('selected');
+            state.selectedTeamsTemp.push({ gameId: game.id, sport, team: team.name, odds: team.odds });
+        }
+
+        function filterSports() {
+            const searchTerm = document.getElementById('teamSearch').value.toLowerCase();
+            const categories = document.querySelectorAll('.sport-category');
+            
+            categories.forEach(category => {
+                const sportName = category.querySelector('.sport-category-header span').textContent.toLowerCase();
+                const gameRows = category.querySelectorAll('.game-row');
+                let hasMatch = sportName.includes(searchTerm);
+                
+                gameRows.forEach(row => {
+                    const teamNames = Array.from(row.querySelectorAll('.game-team-btn')).map(b => b.dataset.team.toLowerCase());
+                    const rowMatch = teamNames.some(n => n.includes(searchTerm)) || sportName.includes(searchTerm);
+                    row.style.display = rowMatch || searchTerm === '' ? 'flex' : 'none';
+                    if (rowMatch) hasMatch = true;
+                });
+                
+                category.style.display = hasMatch || searchTerm === '' ? 'block' : 'none';
+            });
+        }
+
+        function showSingleBetPanel() {
+            // Remove existing panel if any
+            const existingPanel = document.getElementById('singleBetPanel');
+            if (existingPanel) existingPanel.remove();
+
+            const panelDiv = document.createElement('div');
+            panelDiv.id = 'singleBetPanel';
+            panelDiv.className = 'message bot';
+
+            const bet = state.pendingSingleBet;
+            const potentialWin = state.defaultStake * bet.odds;
+
+            let panelHTML = `
+                <div class="single-bet-panel visible">
+                    <div class="single-bet-header">🎯 Confirm Your Single Bet</div>
+                    <div class="single-bet-info">
+                        <div class="single-bet-team">${bet.team}</div>
+                        <div class="single-bet-details">
+                            Sport: ${bet.sport}<br>
+                            Odds: ${bet.odds.toFixed(2)}
+                        </div>
+                    </div>
+                    <div class="single-bet-summary">
+                        Stake: $${state.defaultStake} | Potential Win: $${potentialWin.toFixed(2)}
+                    </div>
+                    <div class="bet-actions">
+                        <button class="action-btn place-btn" onclick="placeSingleBetConfirmed()">Place Bet</button>
+                        <button class="action-btn cancel-btn" onclick="cancelSingleBet()">Cancel</button>
+                    </div>
+                </div>
+            `;
+
+            panelDiv.innerHTML = `
+                <div class="message-avatar">BC</div>
+                <div class="message-content">
+                    ${panelHTML}
+                </div>
+            `;
+
+            chatMessagesEl.appendChild(panelDiv);
+            chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+        }
+
+        function placeSingleBetConfirmed() {
+            const bet = state.pendingSingleBet;
+            
+            if (state.defaultStake > state.balance) {
+                addBotMessage(`❌ Insufficient balance! You have $${state.balance.toFixed(2)} but tried to bet $${state.defaultStake.toFixed(2)}.`);
+                state.pendingSingleBet = null;
+                hideSingleBetPanel();
+                return;
+            }
+
+            const betObj = {
+                id: Date.now(),
+                amount: state.defaultStake,
+                prediction: `${bet.team} to win`,
+                sport: bet.sport,
+                odds: bet.odds,
+                status: 'pending',
+                result: 'pending',
+                timestamp: new Date().toLocaleString(),
+                type: 'single'
+            };
+
+            state.activeBets.push(betObj);
+            state.betHistory.push(betObj);
+            state.balance -= state.defaultStake;
+            state.totalBets++;
+            state.pendingSingleBet = null;
+            
+            updateUI();
+            hideSingleBetPanel();
+            addBotMessage(`✅ Single Bet placed successfully! 🎉\n\n💵 Stake: $${state.defaultStake.toFixed(2)}\n🏆 Sport: ${bet.sport}\n🎯 Team: ${bet.team}\n🎲 Odds: ${bet.odds.toFixed(2)}\n💰 Potential Win: $${(state.defaultStake * bet.odds).toFixed(2)}\n\nRemaining Balance: $${state.balance.toFixed(2)}`);
+        }
+
+        function cancelSingleBet() {
+            state.pendingSingleBet = null;
+            hideSingleBetPanel();
+            addBotMessage('❌ Bet cancelled.');
+        }
+
+        function hideSingleBetPanel() {
+            const panelEl = document.getElementById('singleBetPanel');
+            if (panelEl) panelEl.remove();
+        }
+
+        function showMultiBetPanel() {
+            // Remove existing panel if any
+            const existingPanel = document.getElementById('multibetPanel');
+            if (existingPanel) existingPanel.remove();
+
+            const panelDiv = document.createElement('div');
+            panelDiv.id = 'multibetPanel';
+            panelDiv.className = 'message bot';
+
+            let selectionsHTML = '<div class="multibet-panel visible"><div class="multibet-header">🔗 Your Multi-Bet Selections:</div>';
+            
+            state.multiBetSelections.forEach((sel, idx) => {
+                selectionsHTML += `
+                    <div class="multibet-selection">
+                        <div class="selection-info">
+                            <div class="selection-team">${sel.team}</div>
+                            <div class="selection-odds">${sel.sport} • ${sel.odds.toFixed(2)} odds</div>
+                        </div>
+                        <button class="remove-btn" onclick="removeMultiBetSelection(${idx})">Remove</button>
+                    </div>
+                `;
+            });
+
+            const totalOdds = state.multiBetSelections.reduce((acc, sel) => acc * sel.odds, 1);
+            const potentialWin = state.defaultStake * totalOdds;
+
+            selectionsHTML += `
+                <div class="multibet-summary">
+                    Total Odds: ${totalOdds.toFixed(2)} | Stake: $${state.defaultStake} | Potential Win: $${potentialWin.toFixed(2)}
+                </div>
+                <div class="bet-actions">
+                    <button class="action-btn place-btn" onclick="placeMultiBet()">Place Multi-Bet</button>
+                    <button class="action-btn add-btn" onclick="openSportsModal()">Add More Teams</button>
+                    <button class="action-btn cancel-btn" onclick="cancelMultiBet()">Cancel</button>
+                </div>
+            </div>`;
+
+            panelDiv.innerHTML = `
+                <div class="message-avatar">BC</div>
+                <div class="message-content">
+                    ${selectionsHTML}
+                </div>
+            `;
+
+            chatMessagesEl.appendChild(panelDiv);
+            chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+        }
+
+        function removeMultiBetSelection(index) {
+            state.multiBetSelections.splice(index, 1);
+            if (state.multiBetSelections.length === 0) {
+                hideMultiBetPanel();
+            } else {
+                showMultiBetPanel();
+            }
+        }
+
+        function placeMultiBet() {
+            if (state.multiBetSelections.length === 0) {
+                addBotMessage('❌ No selections in your multi-bet!');
+                return;
+            }
+
+            const stake = state.defaultStake;
+            if (stake > state.balance) {
+                addBotMessage(`❌ Insufficient balance! You have $${state.balance.toFixed(2)} but tried to bet $${stake.toFixed(2)}.`);
+                return;
+            }
+
+            const totalOdds = state.multiBetSelections.reduce((acc, sel) => acc * sel.odds, 1);
+            let selectionsText = state.multiBetSelections.map(s => `${s.team} (${s.odds.toFixed(2)})`).join(' + ');
+
+            const bet = {
+                id: Date.now(),
+                amount: stake,
+                prediction: selectionsText,
+                sport: 'Multi Bet',
+                odds: totalOdds,
+                selections: [...state.multiBetSelections],
+                status: 'pending',
+                result: 'pending',
+                timestamp: new Date().toLocaleString(),
+                type: 'multi'
+            };
+
+            state.activeBets.push(bet);
+            state.betHistory.push(bet);
+            state.balance -= stake;
+            state.totalBets++;
+            state.multiBetSelections = [];
+
+            updateUI();
+            hideMultiBetPanel();
+            addBotMessage(`✅ Multi-Bet placed successfully! 🎉\n\n💵 Stake: $${stake.toFixed(2)}\n🔗 Type: Multi Bet (${bet.selections.length} selections)\n🎲 Combined Odds: ${totalOdds.toFixed(2)}\n💰 Potential Win: $${(stake * totalOdds).toFixed(2)}\n\nRemaining Balance: $${state.balance.toFixed(2)}`);
+        }
+
+        function cancelMultiBet() {
+            state.multiBetSelections = [];
+            hideMultiBetPanel();
+            addBotMessage('❌ Multi-Bet cancelled. Your selections have been cleared.');
+        }
+
+        function hideMultiBetPanel() {
+            const panelEl = document.getElementById('multibetPanel');
+            if (panelEl) panelEl.remove();
+        }
+
+        function switchSidebarTab(tab) {
+            document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+            
+            betsContainerEl.classList.toggle('hidden', tab !== 'active');
+            historyContainerEl.classList.toggle('hidden', tab !== 'history');
+        }
+
+        function sendMessage() {
+            const message = messageInputEl.value.trim();
+            if (!message) return;
+
+            addUserMessage(message);
+            messageInputEl.value = '';
+            messageInputEl.style.height = 'auto';
+
+            processUserMessage(message);
+        }
+
+        function addUserMessage(text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message user';
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <div class="message-text">${escapeHtml(text)}</div>
+                </div>
+                <div class="message-avatar">You</div>
+            `;
+            chatMessagesEl.appendChild(messageDiv);
+            chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+        }
+
+        function addBotMessage(text, suggestions = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message bot';
+            
+            let contentHTML = `<div class="message-text">${text}</div>`;
+            
+            if (suggestions) {
+                contentHTML += '<div class="bet-suggestion"><div class="bet-suggestion-header">💡 Suggested Bets:</div>';
+                suggestions.forEach(sugg => {
+                    contentHTML += `
+                        <div class="bet-option" onclick="addTeamToSelection('${sugg.sport}', '${sugg.team}', ${sugg.odds})">
+                            <div class="bet-option-title">${sugg.team} - ${sugg.sport}</div>
+                            <div class="bet-option-odds">Odds: ${sugg.odds.toFixed(2)} | Potential: $${(state.defaultStake * sugg.odds).toFixed(2)}</div>
+                        </div>
+                    `;
+                });
+                contentHTML += '</div>';
+            }
+            
+            messageDiv.innerHTML = `
+                <div class="message-avatar">BC</div>
+                <div class="message-content">
+                    ${contentHTML}
+                </div>
+            `;
+            
+            chatMessagesEl.appendChild(messageDiv);
+            chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+        }
+
+        function addTeamToSelection(sport, team, odds) {
+            if (state.currentBetType === 'multi') {
+                state.multiBetSelections.push({ sport, team, odds });
+                showMultiBetPanel();
+                addBotMessage(`✅ Added ${team} to your multi-bet!`);
+            } else {
+                state.pendingSingleBet = { sport, team, odds };
+                showSingleBetPanel();
+            }
+        }
+
+        function processUserMessage(message) {
+            const lowerMessage = message.toLowerCase();
+            
+            showTyping();
+
+            setTimeout(() => {
+                removeTyping();
+                
+                if (lowerMessage.includes('place multi') || lowerMessage.includes('confirm multi')) {
+                    if (state.multiBetSelections.length === 0) {
+                        addBotMessage('❌ No selections in your multi-bet! Add teams first.');
+                    } else {
+                        placeMultiBet();
+                    }
+                } else if (lowerMessage.includes('cancel multi')) {
+                    cancelMultiBet();
+                } else if (lowerMessage.includes('add more') || lowerMessage.includes('add another') || lowerMessage.includes('browse')) {
+                    if (state.currentBetType === 'single') {
+                        addBotMessage('💡 You\'re in Single Bet mode. Switch to Multi Bet mode (🎯 button) to add multiple teams!');
+                    } else {
+                        openSportsModal();
+                        addBotMessage('🏆 Sports browser opened! Select teams to add to your multi-bet.');
+                    }
+                } else if (lowerMessage.includes('recommend') || lowerMessage.includes('suggestion')) {
+                    const suggestions = generateSuggestions();
+                    addBotMessage(`Here are some trending bets right now:`, suggestions);
+                } else if (lowerMessage.includes('balance') || lowerMessage.includes('how much')) {
+                    addBotMessage(`💰 Your current balance is $${state.balance.toFixed(2)}. You have ${state.activeBets.length} active bets. Current stake: $${state.defaultStake}`);
+                } else if (lowerMessage.includes('history') || lowerMessage.includes('my bets')) {
+                    switchSidebarTab('history');
+                    if (state.betHistory.length === 0) {
+                        addBotMessage('📊 You have no bet history yet. Place your first bet!');
+                    } else {
+                        let historyText = '📊 Your Recent Bets:\n';
+                        state.betHistory.slice(-5).forEach((bet, i) => {
+                            historyText += `${i + 1}. $${bet.amount} on ${bet.prediction} @ ${bet.odds.toFixed(2)}\n`;
+                        });
+                        addBotMessage(historyText);
+                    }
+                } else {
+                    const responses = [
+                        `Got it! 👍 Browse sports using the 🏆 button or say "I want to bet on [team]". Remember to click "Place Bet" or "Place Multi-Bet" to confirm!`,
+                        `Sure thing! 🎯 Use the sports browser or chat to select teams, then click the place bet button!`,
+                        `Understood! ✨ Your current stake is $${state.defaultStake}. Use the 🏆 button to browse sports or type team names!`,
+                        `That's interesting! 🤔 Ready to place a bet? Use the sports browser (🏆) to select and confirm your bet!`
+                    ];
+                    addBotMessage(responses[Math.floor(Math.random() * responses.length)]);
+                }
+            }, 800);
+        }
+
+        function generateSuggestions() {
+            const suggestions = [];
+            const sports = Object.entries(sportsData);
+            
+            for (let i = 0; i < 3; i++) {
+                const [ sport, data ] = sports[Math.floor(Math.random() * sports.length)];
+                const game = data.games[Math.floor(Math.random() * data.games.length)];
+                const team = Math.random() > 0.5 ? game.home : game.away;
+                suggestions.push({ sport, team: team.name, odds: team.odds });
+            }
+            
+            return suggestions;
+        }
+
+        function showTyping() {
+            if (state.isTyping) return;
+            state.isTyping = true;
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message bot';
+            messageDiv.id = 'typingIndicator';
+            messageDiv.innerHTML = `
+                <div class="message-avatar">BC</div>
+                <div class="message-content">
+                    <div class="typing-indicator">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                </div>
+            `;
+            
+            chatMessagesEl.appendChild(messageDiv);
+            chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+        }
+
+        function removeTyping() {
+            const typingEl = document.getElementById('typingIndicator');
+            if (typingEl) {
+                typingEl.remove();
+            }
+            state.isTyping = false;
+        }
+
+        function updateUI() {
+            totalBetsEl.textContent = state.totalBets;
+            totalWinningsEl.textContent = '$' + state.totalWinnings.toFixed(2);
+            userBalanceEl.textContent = '$' + state.balance.toFixed(2);
+
+            betsContainerEl.innerHTML = '';
+            
+            if (state.activeBets.length === 0) {
+                betsContainerEl.innerHTML = '<div class="empty-state">No active bets yet</div>';
+            } else {
+                state.activeBets.forEach(bet => {
+                    const betEl = document.createElement('div');
+                    betEl.className = 'bet-card bet-placed';
+                    const typeLabel = bet.type === 'multi' ? `🔗 Multi (${bet.selections.length} legs)` : '🎯 Single';
+                    betEl.innerHTML = `
+                        <div class="bet-card-header">
+                            <div class="bet-event">${bet.sport} ${typeLabel}</div>
+                            <div class="bet-status ${bet.status}">${bet.status}</div>
+                        </div>
+                        <div class="bet-amount">Stake: <strong>$${bet.amount.toFixed(2)}</strong></div>
+                        <div class="bet-odds">Odds: <strong>${bet.odds.toFixed(2)}</strong> | Win: <strong>$${(bet.amount * bet.odds).toFixed(2)}</strong></div>
+                        <div class="bet-selections">${bet.prediction}</div>
+                    `;
+                    betsContainerEl.appendChild(betEl);
+                });
+            }
+
+            historyContainerEl.innerHTML = '';
+            
+            if (state.betHistory.length === 0) {
+                historyContainerEl.innerHTML = '<div class="empty-state">No bet history yet</div>';
+            } else {
+                state.betHistory.forEach(bet => {
+                    const betEl = document.createElement('div');
+                    betEl.className = 'bet-card';
+                    const typeLabel = bet.type === 'multi' ? `🔗 Multi (${bet.selections ? bet.selections.length : 0} legs)` : '🎯 Single';
+                    betEl.innerHTML = `
+                        <div class="bet-card-header">
+                            <div class="bet-event">${bet.sport} ${typeLabel}</div>
+                            <div class="bet-status ${bet.result}">${bet.result}</div>
+                        </div>
+                        <div class="bet-amount">Stake: <strong>$${bet.amount.toFixed(2)}</strong></div>
+                        <div class="bet-odds">Odds: <strong>${bet.odds.toFixed(2)}</strong> | Potential: <strong>$${(bet.amount * bet.odds).toFixed(2)}</strong></div>
+                        <div class="bet-selections">${bet.prediction}</div>
+                    `;
+                    historyContainerEl.appendChild(betEl);
+                });
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        updateUI();
+    </script>
+</body>
+</html>
