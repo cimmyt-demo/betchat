@@ -139,6 +139,10 @@
       flex-shrink:0;
     }
 
+    .tb-btn-sidebar {
+      display: none;
+    }
+
     .tb-btn:hover,
     .tb-btn:active {
       background:var(--surf2);
@@ -669,15 +673,21 @@
       color:var(--txt2);
       margin-bottom:8px;
       line-height:1.4;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
 
     .bc-foot {
       display:flex;
       gap:12px;
       font-size:12px;
+      flex-wrap: wrap;
     }
 
-    .bc-foot span { color:var(--txt2); }
+    .bc-foot span { 
+      color:var(--txt2); 
+      white-space: nowrap;
+    }
     .bc-foot strong { color:var(--neon); }
     .bc-foot .win   { color:var(--green); }
 
@@ -1091,6 +1101,31 @@
         gap:10px;
       }
 
+      .sdbar-close {
+        display: none;
+        margin-left: auto;
+        background: none;
+        border: none;
+        color: var(--txt2);
+        cursor: pointer;
+        width: 32px;
+        height: 32px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        transition: background 0.2s, color 0.2s;
+      }
+
+      .sdbar-close:hover,
+      .sdbar-close:active {
+        background: var(--surf2);
+        color: var(--neon);
+      }
+
+      .sdbar-close .material-icons {
+        font-size: 20px;
+      }
+
       .sdbar-logo {
         width:34px;
         height:34px;
@@ -1251,7 +1286,108 @@
         border-radius:16px;
       }
 
-      #sidebar { display:none; }
+      #sidebar { 
+        display: flex;
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 85%;
+        max-width: 320px;
+        z-index: 10000;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        box-shadow: 2px 0 12px rgba(0,0,0,0.3);
+        flex-direction: column;
+        overflow: hidden;
+        background: var(--surf);
+      }
+
+      #sidebar.open {
+        transform: translateX(0);
+      }
+
+      #sidebar .sdbar-hdr {
+        position: relative;
+      }
+
+      #sidebar .sdbar-hdr h2 {
+        visibility: hidden;
+        position: relative;
+      }
+
+      #sidebar .sdbar-hdr h2::before {
+        content: 'Bet History';
+        visibility: visible;
+        position: absolute;
+        font-size: 16px;
+        padding-left: 30px;
+      }
+
+      #sidebar .sdbar-logo {
+        display: none;
+      }
+
+      /* Hide tabs on mobile - we only show history */
+      #sidebar .sdbar-tabs {
+        display: none;
+      }
+
+      /* Show history by default on mobile, hide active */
+      #sidebar #deskActive {
+        display: none !important;
+      }
+
+      #sidebar #deskHistory {
+        display: flex !important;
+      }
+
+      #sidebar .sdbar-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        min-height: 0;
+      }
+
+      #sidebar .bet-card {
+        width: 100%;
+        min-width: 0;
+        flex-shrink: 0;
+      }
+
+      #sidebar .sdbar-tabs {
+        flex-shrink: 0;
+      }
+
+      #sidebar .sdbar-hdr {
+        flex-shrink: 0;
+      }
+
+      .sdbar-close {
+        display: flex;
+      }
+
+      #sidebarBackdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 9999;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      #sidebarBackdrop.active {
+        display: block;
+        opacity: 1;
+      }
+
+      .tb-btn-sidebar {
+        display: flex;
+      }
 
       #mainArea,
       #chatPage,
@@ -1278,8 +1414,25 @@
       }
 
       #bottomNav {
-        height:calc(60px + env(safe-area-inset-bottom, 0px));
+        height:calc(64px + env(safe-area-inset-bottom, 0px));
         padding-bottom:env(safe-area-inset-bottom, 0px);
+      }
+
+      #bottomNav .nav-item {
+        min-width:0;
+      }
+
+      #bottomNav .nav-lbl {
+        font-size:9px;
+      }
+
+      #bottomNav .nav-center {
+        flex:0 0 68px;
+      }
+
+      #bottomNav .nav-center-ring {
+        width:46px;
+        height:46px;
       }
 
       #sportsOverlay {
@@ -1311,12 +1464,16 @@
   </style>
 </head>
 <body>
+<div id="sidebarBackdrop" onclick="toggleSidebar()"></div>
 <div id="app">
 
   <div id="sidebar">
     <div class="sdbar-hdr">
       <div class="sdbar-logo">BC</div>
       <h2>BetChat</h2>
+      <!-- <button class="sdbar-close" onclick="toggleSidebar()">
+        <span class="material-icons">close</span>
+      </button> -->
     </div>
     <div class="sdbar-tabs">
       <button class="sdbar-tab active" onclick="deskTab('active',this)">Active</button>
@@ -1335,6 +1492,9 @@
       <div class="tb-logo">BC</div>
       <div class="tb-name">BetChat</div>
       <div id="betIndicator">Bet Better.</div>
+      <button class="tb-btn tb-btn-sidebar" id="sidebarToggle" title="Bet History" onclick="toggleSidebar()">
+        <span class="material-icons">history</span>
+      </button>
       <button class="tb-btn" id="topBrowseBtn" title="Browse Sports" onclick="openSheet()">
         <span class="material-icons">sports_soccer</span>
       </button>
@@ -1423,13 +1583,17 @@
     <span class="material-icons">chat_bubble_outline</span>
     <span class="nav-lbl">Chat</span>
   </button>
+  <button class="nav-item" id="navActiveBets" onclick="openBetsTab('active',this)">
+    <span class="material-icons">receipt_long</span>
+    <span class="nav-lbl">Active</span>
+  </button>
   <button class="nav-center" onclick="openSheet()">
     <div class="nav-center-ring"><span class="material-icons">sports_soccer</span></div>
     <span class="nav-center-lbl">Browse</span>
   </button>
-  <button class="nav-item" id="navBets" onclick="showPage('betsPage',this)">
-    <span class="material-icons">receipt_long</span>
-    <span class="nav-lbl">My Bets</span>
+  <button class="nav-item" id="navHistoryBets" onclick="openBetsTab('history',this)">
+    <span class="material-icons">history</span>
+    <span class="nav-lbl">History</span>
   </button>
 </div>
 
@@ -1538,6 +1702,20 @@ function toggleTheme() {
   updateThemeIcon(isLight);
 }
 
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('sidebarBackdrop');
+  const isOpen = sidebar.classList.contains('open');
+  
+  if (isOpen) {
+    sidebar.classList.remove('open');
+    backdrop.classList.remove('active');
+  } else {
+    sidebar.classList.add('open');
+    backdrop.classList.add('active');
+  }
+}
+
 function updateThemeIcon(isLight) {
   const toggle = document.getElementById('themeToggle');
   if (!toggle) return;
@@ -1560,6 +1738,22 @@ function showPage(id, btn) {
   document.getElementById(id).classList.add('active');
   document.querySelectorAll('#bottomNav .nav-item').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
+}
+
+function openBetsTab(tab, btn) {
+  // On mobile, open sidebar and always show history tab
+  if (window.innerWidth <= 767) {
+    toggleSidebar();
+    // Always show history tab on mobile
+    const historyTab = document.querySelector('.sdbar-tab:last-child');
+    if (historyTab) deskTab('history', historyTab);
+    return;
+  }
+  
+  // Original behavior for larger screens (shouldn't happen but kept for safety)
+  showPage('betsPage', btn);
+  const tabBtn = document.querySelector(`#betsPage .page-tab${tab === 'history' ? ':last-child' : ':first-child'}`);
+  if (tabBtn) mobBetsTab(tab, tabBtn);
 }
 
 function deskTab(tab, btn) {
@@ -1922,7 +2116,7 @@ function processMsg(msg) {
     } else if (lo.includes('balance') || lo.includes('how much')) {
       botMsg(`💰 Balance: $${S.balance.toFixed(2)}\n📋 Active: ${S.activeBets.length}\n🎯 Stake: $${S.stake}`);
     } else if (lo.includes('history') || lo.includes('my bets')) {
-      showPage('betsPage', document.getElementById('navBets'));
+      openBetsTab('active', document.getElementById('navActiveBets'));
       botMsg(`📊 Bet history: ${S.betHistory.length} bets.`);
     } else {
       const r = [
