@@ -478,6 +478,92 @@
       cursor:pointer;
     }
 
+    #winnersMarquee {
+      background: linear-gradient(90deg, rgba(0,212,255,.08), rgba(245,197,24,.08));
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 0;
+      overflow: hidden;
+      flex-shrink: 0;
+      position: relative;
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+    }
+
+    #winnersMarquee::before {
+      position: absolute;
+      left: 10px;
+      font-weight: 700;
+      color: var(--gold);
+      font-size: 12px;
+      white-space: nowrap;
+      z-index: 2;
+      background: linear-gradient(90deg, var(--surf), transparent);
+      padding-right: 10px;
+    }
+
+    .marquee-track {
+      display: flex;
+      gap: 20px;
+      animation: marquee 25s linear infinite;
+      padding-left: 130px;
+      will-change: transform;
+    }
+
+    @keyframes marquee {
+      0% {
+        transform: translateX(0);
+      }
+      100% {
+        transform: translateX(-50%);
+      }
+    }
+
+    .winner-item {
+      flex-shrink: 0;
+      white-space: nowrap;
+      font-size: 12px;
+      color: var(--txt2);
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .winner-item strong {
+      color: var(--green);
+      font-weight: 600;
+    }
+
+    .winner-item .team {
+      color: var(--neon);
+      font-weight: 600;
+    }
+
+    .winner-badge {
+      flex-shrink: 0;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: linear-gradient(135deg, rgba(0,212,255,.15), rgba(245,197,24,.15));
+      border: 1px solid rgba(0,212,255,.3);
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-name {
+      color: var(--neon);
+      font-weight: 700;
+    }
+
+    .badge-amount {
+      color: var(--green);
+      font-weight: 700;
+    }
+
     #chatInput {
       padding:10px 10px calc(14px + env(safe-area-inset-bottom, 0px));
       background:var(--surf);
@@ -1532,6 +1618,9 @@
     <div id="pages">
       <div class="page active" id="chatPage">
         <div id="chatMessages"></div>
+        <div id="winnersMarquee">
+          <div class="marquee-track" id="marqueeTrack"></div>
+        </div>
         <div id="chatInput">
           <div class="input-row">
             <textarea id="msgInput" rows="1" placeholder="Chat or ask for tips…"></textarea>
@@ -2208,6 +2297,94 @@ function esc(s) {
     .replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;');
 }
+
+function updateWinnersMarquee() {
+  const track = document.getElementById('marqueeTrack');
+  if (!track) return;
+
+  // Player names pool
+  const playerNames = ['James', 'Kevin', 'Marcus', 'Alex', 'Sarah', 'David', 'Emma', 'Chris', 'Jessica', 'Michael', 'Lisa', 'Daniel', 'Rachel', 'Ryan', 'Sophie'];
+
+  // Get recent winners from history or generate demo data
+  let winners = S.betHistory
+    .filter(b => b.result === 'won')
+    .slice(-10);
+
+  // If no winners, generate some demo badges
+  if (!winners.length) {
+    winners = [
+      { amount: 10000, odds: 2.5 },
+      { amount: 89200, odds: 4.2 },
+      { amount: 15750, odds: 3.1 },
+      { amount: 42300, odds: 2.8 },
+      { amount: 7600, odds: 1.9 },
+      { amount: 55000, odds: 3.5 }
+    ];
+  }
+
+  // Assign random player names and create display items
+  const winnerItems = winners.map((b, idx) => {
+    const playerName = playerNames[idx % playerNames.length];
+    const winnings = typeof b.winnings === 'undefined' 
+      ? (b.amount * b.odds).toFixed(0)
+      : b.winnings;
+    
+    return {
+      name: playerName,
+      amount: parseInt(winnings).toLocaleString()
+    };
+  });
+
+  if (!winnerItems.length) {
+    track.innerHTML = '<div class="winner-item" style="flex: 1; justify-content: center; color: var(--txt2);">No winners yet — place a bet to get started! 🎯</div>';
+    return;
+  }
+
+  // Create items and duplicate for seamless loop
+  let html = '';
+  [...winnerItems, ...winnerItems].forEach((w) => {
+    html += `<div class="winner-badge">
+      <span class="badge-name">${w.name}</span>
+      <span class="badge-amount">💰 ${w.amount}</span>
+    </div>`;
+  });
+
+  track.innerHTML = html;
+}
+
+// Initialize marquee on page load
+window.addEventListener('DOMContentLoaded', () => {
+  updateWinnersMarquee();
+});
+
+// Update marquee whenever bets change
+const originalPlaceBet = window.placeBet;
+window.placeBet = function() {
+  originalPlaceBet.call(this);
+  // Simulate some winners for demo
+  if (Math.random() > 0.5) {
+    setTimeout(() => {
+      const activeBets = S.activeBets;
+      if (activeBets.length > 0) {
+        const randomBet = activeBets[Math.floor(Math.random() * activeBets.length)];
+        randomBet.result = 'won';
+        randomBet.status = 'won';
+        S.betHistory.forEach(b => {
+          if (b.id === randomBet.id) {
+            b.result = 'won';
+            b.status = 'won';
+            S.totalWinnings += b.amount * b.odds;
+          }
+        });
+        S.activeBets = S.activeBets.filter(b => b.id !== randomBet.id);
+        updateLists();
+        updateStats();
+        updateWinnersMarquee();
+        botMsg(`🎉 Congratulations! Your bet on ${randomBet.prediction} won! +$${(randomBet.amount * randomBet.odds).toFixed(2)}`);
+      }
+    }, 2000 + Math.random() * 3000);
+  }
+};
 </script>
 </body>
 </html>
